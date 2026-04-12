@@ -1,29 +1,31 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import Login from './pages/auth/Login'
 
-// Páginas reales — las construimos en la siguiente fase
-// De momento muestran un placeholder para que la app no rompa
-function Placeholder({ title }) {
-  const { signOut, patient } = useAuth()
+import Login               from './pages/auth/Login'
+import Home                from './pages/home/Home'
+import Osteopatia          from './pages/osteopatia/Osteopatia'
+import OsteopatiaCalendar  from './pages/osteopatia/OsteopatiaCalendar'
+import Yoga                from './pages/yoga/Yoga'
+import MisReservas         from './pages/mis-reservas/MisReservas'
+
+// Placeholder para secciones aún sin construir
+function SimplePlaceholder({ title }) {
   return (
-    <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 style={{ color: '#1d5c2e' }}>{title}</h2>
-        <button
-          onClick={signOut}
-          style={{ padding: '8px 16px', background: '#f0f5f0', border: 'none', borderRadius: 8, cursor: 'pointer', color: '#666' }}
-        >
-          Cerrar sesión
-        </button>
+    <div style={{ minHeight: '100svh', display: 'flex', flexDirection: 'column', background: '#f0f5f0' }}>
+      <div style={{ background: 'linear-gradient(160deg,#1d5c2e,#2d7a3f)', padding: '52px 24px 56px' }}>
+        <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 10px' }}>
+          En construcción
+        </p>
+        <h2 style={{ color: '#fff', fontSize: 24, fontWeight: 800, margin: 0 }}>{title}</h2>
       </div>
-      <p style={{ color: '#888' }}>Hola, {patient?.full_name} 👋</p>
-      <p style={{ color: '#aaa', marginTop: 8, fontSize: 14 }}>Esta sección está en construcción.</p>
+      <div style={{ background: '#fff', borderRadius: '28px 28px 0 0', flex: 1, padding: 24, marginTop: -24 }}>
+        <p style={{ color: '#aaa', fontSize: 14 }}>Esta sección estará disponible próximamente.</p>
+      </div>
     </div>
   )
 }
 
-// Ruta privada: si no hay sesión manda al login
+// Ruta privada: sin sesión → login
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return (
@@ -35,7 +37,7 @@ function PrivateRoute({ children }) {
   return children
 }
 
-// Ruta pública: si ya hay sesión manda al inicio
+// Ruta pública: con sesión → home
 function PublicRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return null
@@ -46,13 +48,37 @@ function PublicRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login"         element={<PublicRoute><Login /></PublicRoute>} />
-      <Route path="/"              element={<PrivateRoute><Placeholder title="Inicio" /></PrivateRoute>} />
-      <Route path="/osteopatia"    element={<PrivateRoute><Placeholder title="Osteopatía" /></PrivateRoute>} />
-      <Route path="/yoga"          element={<PrivateRoute><Placeholder title="Yoga" /></PrivateRoute>} />
-      <Route path="/belleza"       element={<PrivateRoute><Placeholder title="Belleza" /></PrivateRoute>} />
-      <Route path="/mis-reservas"  element={<PrivateRoute><Placeholder title="Mis reservas" /></PrivateRoute>} />
-      <Route path="*"              element={<Navigate to="/" replace />} />
+      {/* Autenticación */}
+      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+
+      {/* Inicio */}
+      <Route path="/"        element={<PrivateRoute><Home /></PrivateRoute>} />
+      <Route path="/reservar" element={<Navigate to="/" replace />} />
+
+      {/* Osteopatía */}
+      <Route path="/osteopatia"
+        element={<PrivateRoute><Osteopatia /></PrivateRoute>} />
+      <Route path="/osteopatia/calendario/:id"
+        element={<PrivateRoute><OsteopatiaCalendar /></PrivateRoute>} />
+
+      {/* Yoga */}
+      <Route path="/yoga"
+        element={<PrivateRoute><Yoga /></PrivateRoute>} />
+
+      {/* Belleza — por construir */}
+      <Route path="/belleza"
+        element={<PrivateRoute><SimplePlaceholder title="Belleza" /></PrivateRoute>} />
+
+      {/* Mis reservas */}
+      <Route path="/mis-reservas"
+        element={<PrivateRoute><MisReservas /></PrivateRoute>} />
+
+      {/* Perfil — por construir */}
+      <Route path="/perfil"
+        element={<PrivateRoute><SimplePlaceholder title="Mi perfil" /></PrivateRoute>} />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

@@ -1,0 +1,272 @@
+/* ─── Pantalla ───────────────────────────────────────────────────── */
+.home-screen {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: #f0f5f0;
+}
+
+/* ─── Cabecera verde ─────────────────────────────────────────────── */
+.home-header {
+  background: linear-gradient(160deg, #1d5c2e 0%, #2d7a3f 60%, #3a9150 100%);
+  padding: 52px 20px 28px;
+}
+
+.home-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.home-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.home-brand {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.home-bell {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-greeting-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+}
+
+.home-greeting-name {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+/* ─── Tarjeta próxima cita en el header ──────────────────────────── */
+.home-next-cita {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-top: 18px;
+  text-decoration: none;
+  display: block;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-next-cita:hover { background: rgba(255, 255, 255, 0.22); }
+
+.home-next-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.home-next-name {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.home-next-date {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.home-next-skeleton {
+  height: 72px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  margin-top: 18px;
+  animation: pulseAlpha 1.4s ease-in-out infinite;
+}
+
+@keyframes pulseAlpha {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+.home-no-cita {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-top: 18px;
+  text-align: center;
+}
+
+.home-no-cita p {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+/* ─── Cuerpo blanco ──────────────────────────────────────────────── */
+.home-body {
+  background: #fff;
+  border-radius: 28px 28px 0 0;
+  flex: 1;
+  padding: 28px 16px 24px;
+  margin-top: -16px;
+}
+
+.home-section-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin-bottom: 14px;
+}
+
+/* ─── Grid 2×2 de servicios ──────────────────────────────────────── */
+.services-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.service-card {
+  border-radius: 18px;
+  padding: 20px 16px;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: transform 0.12s, filter 0.12s;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.service-card:active {
+  transform: scale(0.96);
+  filter: brightness(0.92);
+}
+
+.service-card.osteo   { background: linear-gradient(135deg, #1d5c2e, #3a9150); }
+.service-card.yoga    { background: linear-gradient(135deg, #9a7a20, #C8A535); }
+.service-card.belleza { background: linear-gradient(135deg, #5a3a8a, #7a52b0); }
+.service-card.citas   { background: linear-gradient(135deg, #1a5c7a, #2a7aa0); }
+
+.service-icon {
+  font-size: 26px;
+  margin-bottom: 10px;
+}
+
+.service-name {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.service-sub {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+/* ─── Últimas reservas ───────────────────────────────────────────── */
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #f8fbf8;
+  border-radius: 14px;
+  text-decoration: none;
+}
+
+.recent-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.recent-dot.osteo   { background: #2d7a3f; }
+.recent-dot.yoga    { background: #C8A535; }
+.recent-dot.belleza { background: #7a52b0; }
+
+.recent-info { flex: 1; min-width: 0; }
+
+.recent-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-date {
+  font-size: 11px;
+  color: #888;
+  margin-top: 1px;
+}
+
+.recent-status {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.recent-status.confirmed { background: #e8f5ec; color: #2d7a3f; }
+.recent-status.pending   { background: #fdf8e8; color: #9a7a20; }
+.recent-status.completed { background: #f0f0f0; color: #888; }
+.recent-status.cancelled { background: #fef2f2; color: #dc2626; }
+
+.recent-skeleton {
+  height: 50px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.no-recent {
+  text-align: center;
+  padding: 16px;
+  color: #bbb;
+  font-size: 13px;
+}
