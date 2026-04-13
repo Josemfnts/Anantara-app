@@ -31,8 +31,12 @@ const CSS = `
     --shadow:       0 2px 12px rgba(29,92,46,.10);
     --shadow-lg:    0 6px 24px rgba(29,92,46,.15);
   }
-  body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased }
+  body { font-family:'Inter',system-ui,sans-serif; background:#1d5c2e; color:var(--text); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased }
   button,input,select,textarea { font-family:inherit }
+
+  /* ── Mobile app shell — centered on desktop ── */
+  #root { display:flex; justify-content:center; background:#1d5c2e }
+  #root > * { width:100%; max-width:430px; position:relative }
 
   /* ── Screen wrapper ── */
   .screen { min-height:100svh; display:flex; flex-direction:column; background:var(--bg); padding-bottom:calc(60px + env(safe-area-inset-bottom)) }
@@ -43,7 +47,7 @@ const CSS = `
   .green-body { background:var(--white); border-radius:24px 24px 0 0; margin-top:-28px; padding:22px 20px; flex:1 }
 
   /* ── Auth screen ── */
-  .auth-screen { min-height:100svh; display:flex; flex-direction:column; background:linear-gradient(160deg,var(--green-dark),var(--green)) }
+  .auth-screen { min-height:100svh; display:flex; flex-direction:column; background:linear-gradient(160deg,var(--green-dark),var(--green)); overflow:hidden }
   .auth-hero { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:48px 24px 32px }
   .auth-logo { width:72px; height:72px; border-radius:50%; background:rgba(255,255,255,.15); border:2px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:900; color:#fff; margin-bottom:16px }
   .auth-brand { font-size:26px; font-weight:900; letter-spacing:4px; color:#fff }
@@ -62,7 +66,7 @@ const CSS = `
   .auth-field input:focus { border-color:var(--green) }
 
   /* ── Bottom Nav ── */
-  .bottom-nav { position:fixed; bottom:0; left:0; right:0; height:calc(60px + env(safe-area-inset-bottom)); background:var(--white); border-top:1px solid var(--border); display:flex; align-items:flex-start; padding-top:6px; z-index:100; box-shadow:0 -2px 12px rgba(0,0,0,.06) }
+  .bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:430px; height:calc(60px + env(safe-area-inset-bottom)); background:var(--white); border-top:1px solid var(--border); display:flex; align-items:flex-start; padding-top:6px; z-index:100; box-shadow:0 -2px 12px rgba(0,0,0,.06) }
   .bnav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:4px 0; border:none; background:none; cursor:pointer; color:var(--text-muted); transition:color .15s; font-size:10px; font-weight:600 }
   .bnav-item.active { color:var(--green) }
   .bnav-icon { font-size:22px; line-height:1 }
@@ -188,7 +192,7 @@ const CSS = `
   .class-btn.booked { background:var(--green-subtle); color:var(--green-dark); cursor:default }
 
   /* ── Toast ── */
-  .toast { position:fixed; bottom:calc(76px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:var(--green-dark); color:#fff; padding:12px 24px; border-radius:99px; font-size:13px; font-weight:700; z-index:200; white-space:nowrap; animation:slideUp .2s ease; box-shadow:var(--shadow-lg) }
+  .toast { position:fixed; bottom:calc(76px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:var(--green-dark); color:#fff; padding:12px 24px; border-radius:99px; font-size:13px; font-weight:700; z-index:200; white-space:nowrap; animation:slideUp .2s ease; box-shadow:var(--shadow-lg); max-width:380px; text-align:center }
   .toast.error { background:#dc2626 }
   @keyframes slideUp { from{transform:translateX(-50%) translateY(12px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
 
