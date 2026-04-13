@@ -1,31 +1,4 @@
-/* ─── Reset global ───────────────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: #f0f5f0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #1a1a1a;
-}
-
-#root {
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-}
-
-h1, h2, h3, h4, p {
-  margin: 0;
-}
-
-button {
-  font-family: inherit;
-}
-
-input, textarea, select {
-  font-family: inherit;
-}
+/* Base reset only — all styles are injected by App.jsx */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+body { margin: 0 }
+#root { min-height: 100svh }
