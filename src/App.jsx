@@ -31,19 +31,19 @@ const CSS = `
     --shadow:       0 2px 12px rgba(29,92,46,.10);
     --shadow-lg:    0 6px 24px rgba(29,92,46,.15);
   }
-  body { font-family:'Inter',system-ui,sans-serif; background:#1d5c2e; color:var(--text); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased }
+  body { font-family:'Inter',system-ui,sans-serif; background:#1d5c2e; color:var(--text); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; margin:0 }
   button,input,select,textarea { font-family:inherit }
 
   /* ── Mobile app shell — centered on desktop ── */
-  #root { display:flex; justify-content:center; background:#1d5c2e }
-  #root > * { width:100%; max-width:430px; position:relative }
+  #root { display:flex; justify-content:center; align-items:flex-start; min-height:100svh }
+  .app-wrap { width:100%; max-width:430px; min-height:100svh; background:var(--bg); overflow-x:hidden }
 
   /* ── Screen wrapper ── */
   .screen { min-height:100svh; display:flex; flex-direction:column; background:var(--bg); padding-bottom:calc(60px + env(safe-area-inset-bottom)) }
 
   /* ── Green header ── */
-  .green-header { background:linear-gradient(160deg,var(--green-dark),var(--green)); padding:env(safe-area-inset-top,16px) 20px 64px; position:relative }
-  .green-header-inner { padding-top:16px }
+  .green-header { background:linear-gradient(160deg,var(--green-dark),var(--green)); padding:calc(env(safe-area-inset-top,0px) + 16px) 20px 64px; position:relative }
+  .green-header-inner { }
   .green-body { background:var(--white); border-radius:24px 24px 0 0; margin-top:-28px; padding:22px 20px; flex:1 }
 
   /* ── Auth screen ── */
@@ -66,7 +66,7 @@ const CSS = `
   .auth-field input:focus { border-color:var(--green) }
 
   /* ── Bottom Nav ── */
-  .bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:430px; height:calc(60px + env(safe-area-inset-bottom)); background:var(--white); border-top:1px solid var(--border); display:flex; align-items:flex-start; padding-top:6px; z-index:100; box-shadow:0 -2px 12px rgba(0,0,0,.06) }
+  .bottom-nav { position:fixed; bottom:0; left:0; right:0; margin:0 auto; max-width:430px; height:calc(60px + env(safe-area-inset-bottom)); background:var(--white); border-top:1px solid var(--border); display:flex; align-items:flex-start; padding-top:6px; z-index:100; box-shadow:0 -2px 12px rgba(0,0,0,.06) }
   .bnav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:4px 0; border:none; background:none; cursor:pointer; color:var(--text-muted); transition:color .15s; font-size:10px; font-weight:600 }
   .bnav-item.active { color:var(--green) }
   .bnav-icon { font-size:22px; line-height:1 }
@@ -1365,36 +1365,26 @@ export default function App() {
     setPage(p)
   }
 
-  if (authLoad) return (
-    <div style={{ minHeight:'100svh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg)', fontFamily:'sans-serif' }}>
-      <div style={{ color:'var(--green)' }}>Cargando…</div>
-    </div>
-  )
+  const renderPage = () => {
+    if (authLoad) return (
+      <div style={{ minHeight:'100svh', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ color:'var(--green)' }}>Cargando…</div>
+      </div>
+    )
+    if (!user) return <LoginPage onLogin={u => { setUser(u); fetchPatient(u.id) }} />
 
-  if (!user) return <LoginPage onLogin={u => { setUser(u); fetchPatient(u.id) }} />
-
-  switch (page) {
-    case 'home':
-      return <HomePage patient={patient} onNav={nav} />
-
-    case 'osteopatia':
-      return selPro
+    switch (page) {
+      case 'home':        return <HomePage patient={patient} onNav={nav} />
+      case 'osteopatia':  return selPro
         ? <OsteopatiaCalendarPage pro={selPro} patient={patient} onNav={nav} onBack={() => setSelPro(null)} />
         : <OsteopatiaPage onNav={nav} onSelectPro={p => setSelPro(p)} />
-
-    case 'yoga':
-      return <YogaPage patient={patient} onNav={nav} />
-
-    case 'belleza':
-      return <BellezaPage patient={patient} onNav={nav} />
-
-    case 'mis-reservas':
-      return <MisReservasPage patient={patient} onNav={nav} />
-
-    case 'perfil':
-      return <PerfilPage patient={patient} onNav={nav} onLogout={logout} onPatientUpdate={updatePatient} />
-
-    default:
-      return <HomePage patient={patient} onNav={nav} />
+      case 'yoga':        return <YogaPage patient={patient} onNav={nav} />
+      case 'belleza':     return <BellezaPage patient={patient} onNav={nav} />
+      case 'mis-reservas':return <MisReservasPage patient={patient} onNav={nav} />
+      case 'perfil':      return <PerfilPage patient={patient} onNav={nav} onLogout={logout} onPatientUpdate={updatePatient} />
+      default:            return <HomePage patient={patient} onNav={nav} />
+    }
   }
+
+  return <div className="app-wrap">{renderPage()}</div>
 }
