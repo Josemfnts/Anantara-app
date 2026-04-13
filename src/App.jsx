@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 // ─── Supabase ────────────────────────────────────────────────────────────────
 const sb = createClient(
@@ -245,6 +245,36 @@ const CSS = `
   .empty-icon  { font-size:36px; margin-bottom:10px }
   .empty-title { font-size:15px; font-weight:700; color:var(--text2); margin-bottom:4px }
   .empty-sub   { font-size:13px }
+
+  /* ── Osteo service selector ── */
+  .svc-card { display:flex; align-items:center; gap:14px; padding:16px; background:var(--white); border-radius:var(--radius-lg); border:2px solid var(--border); margin-bottom:10px; cursor:pointer; transition:border-color .15s }
+  .svc-card.selected { border-color:var(--green); background:var(--green-subtle) }
+  .svc-icon2 { width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,var(--green-dark),var(--green-light)); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0 }
+  .svc-info { flex:1 }
+  .svc-name { font-size:14px; font-weight:800; color:var(--text) }
+  .svc-dur  { font-size:12px; color:var(--text-muted); margin-top:2px }
+  .svc-check { font-size:18px; color:var(--green); opacity:0; transition:opacity .15s }
+  .svc-card.selected .svc-check { opacity:1 }
+
+  /* ── Perfil edit mode ── */
+  .perfil-field { margin-bottom:12px }
+  .perfil-field label { display:block; font-size:12px; font-weight:700; color:var(--text2); margin-bottom:5px }
+  .perfil-field input { width:100%; padding:11px 14px; border:1.5px solid var(--border); border-radius:10px; font-size:14px; color:var(--text); background:var(--white); outline:none; transition:border-color .15s }
+  .perfil-field input:focus { border-color:var(--green) }
+  .perfil-save-btn { width:100%; padding:13px; background:var(--green); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; margin-bottom:10px; transition:background .15s }
+  .perfil-save-btn:disabled { opacity:.5 }
+  .perfil-save-btn:hover:not(:disabled) { background:var(--green-dark) }
+  .perfil-edit-btn { width:100%; padding:13px; background:var(--bg); color:var(--text); border:1.5px solid var(--border); border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:16px; transition:border-color .15s }
+  .perfil-edit-btn:hover { border-color:var(--green); color:var(--green) }
+  .stat-row { display:flex; gap:12px; margin-bottom:20px }
+  .stat-box { flex:1; border-radius:12px; padding:14px 16px; text-align:center }
+  .stat-box-val { font-size:24px; font-weight:900 }
+  .stat-box-lbl { font-size:11px; font-weight:700; margin-top:2px }
+  .wapp-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--white); border-radius:var(--radius-lg); border:1px solid var(--border); margin-top:12px }
+  .wapp-label { font-size:14px; font-weight:700; color:var(--text) }
+  .wapp-sub { font-size:12px; color:var(--text-muted); margin-top:2px }
+  .toggle-track { width:44px; height:24px; border-radius:12px; border:none; cursor:pointer; position:relative; transition:background .2s; flex-shrink:0 }
+  .toggle-thumb { width:18px; height:18px; border-radius:50%; background:#fff; position:absolute; top:3px; transition:left .2s }
 `
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -580,8 +610,15 @@ function OsteopatiaPage({ onNav, onSelectPro }) {
 }
 
 // ─── OsteopatiaCalendar ───────────────────────────────────────────────────────
+const OSTEO_SERVICES = [
+  { id:'consulta',  name:'Consulta',          duration:60, icon:'🦴', desc:'Sesión estándar · 60 min' },
+  { id:'primera',   name:'Primera consulta',  duration:90, icon:'📋', desc:'Primera visita completa · 90 min' },
+  { id:'revision',  name:'Revisión',          duration:30, icon:'🔍', desc:'Seguimiento rápido · 30 min' },
+]
+
 function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
   const today = new Date(); today.setHours(0,0,0,0)
+  const [selService,setSelService]= useState(null)
   const [year,   setYear]   = useState(today.getFullYear())
   const [month,  setMonth]  = useState(today.getMonth())
   const [avail,  setAvail]  = useState(new Set())
@@ -640,17 +677,36 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
   }
 
   const confirm = async () => {
-    if (!selDate || !selSlot || !patient?.id) return
+    if (!selDate || !selSlot || !patient?.id || !selService) return
     setConfirming(true); setErr('')
-    const startDT = new Date(`${selDate}T${selSlot}:00`)
-    const { error } = await sb.from('appointments').insert({
-      patient_id: patient.id,
-      professional_id: pro.id,
-      start_time: startDT.toISOString(),
-      status: 'confirmed',
-    })
-    if (error) { setErr(error.message || 'No se pudo crear la cita.') }
-    else { setConfirmed(true) }
+    try {
+      const startDT = new Date(`${selDate}T${selSlot}:00`)
+      const endDT   = new Date(startDT.getTime() + selService.duration * 60000)
+      // Race condition check: verify slot is still free before inserting
+      const { data: existing } = await sb.from('appointments')
+        .select('id').eq('professional_id', pro.id)
+        .gte('start_time', startDT.toISOString())
+        .lt('start_time', endDT.toISOString())
+        .neq('status','cancelled')
+      if (existing?.length > 0) {
+        setErr('Este hueco acaba de ser ocupado. Elige otra hora.')
+        setSelSlot(null)
+        setConfirming(false)
+        return
+      }
+      const { error } = await sb.from('appointments').insert({
+        patient_id: patient.id,
+        professional_id: pro.id,
+        start_time: startDT.toISOString(),
+        end_time: endDT.toISOString(),
+        status: 'pending',
+        notes: selService.name,
+      })
+      if (error) throw error
+      setConfirmed(true)
+    } catch (ex) {
+      setErr(ex.message || 'No se pudo crear la cita.')
+    }
     setConfirming(false)
   }
 
@@ -658,11 +714,39 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
     return (
       <div className="success-screen">
         <div className="success-icon">✅</div>
-        <div className="success-title">¡Cita reservada!</div>
-        <p className="success-sub">{selDate} a las {selSlot}h<br />con {pro.full_name}</p>
+        <div className="success-title">¡Cita solicitada!</div>
+        <p className="success-sub">{selService?.name}<br />{selDate} a las {selSlot}h<br />con {pro.full_name}<br /><span style={{ fontSize:12, color:'var(--text-muted)' }}>Recibirás confirmación pronto</span></p>
         <button className="main-btn" style={{ width:'auto', padding:'14px 32px' }} onClick={() => onNav('mis-reservas')}>
           Ver mis citas
         </button>
+      </div>
+    )
+  }
+
+  // Step 1: service type selector
+  if (!selService) {
+    return (
+      <div className="screen">
+        <header className="green-header">
+          <div className="green-header-inner">
+            <button className="page-back" onClick={onBack}>‹ {pro.full_name}</button>
+            <div className="page-htitle">Tipo de consulta</div>
+            <div className="page-hsub">¿Qué tipo de cita necesitas?</div>
+          </div>
+        </header>
+        <main className="green-body">
+          <p className="section-label">Elige el tipo de sesión</p>
+          {OSTEO_SERVICES.map(svc => (
+            <div key={svc.id} className={`svc-card ${selService?.id===svc.id?'selected':''}`} onClick={() => setSelService(svc)}>
+              <div className="svc-icon2">{svc.icon}</div>
+              <div className="svc-info">
+                <div className="svc-name">{svc.name}</div>
+                <div className="svc-dur">{svc.desc}</div>
+              </div>
+              <div className="svc-check">✓</div>
+            </div>
+          ))}
+        </main>
       </div>
     )
   }
@@ -678,9 +762,9 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
     <div className="screen">
       <header className="green-header">
         <div className="green-header-inner">
-          <button className="page-back" onClick={onBack}>‹ {pro.full_name}</button>
+          <button className="page-back" onClick={() => setSelService(null)}>‹ Tipo de consulta</button>
           <div className="page-htitle">Elige tu cita</div>
-          <div className="page-hsub">{pro.specialty || 'Osteopatía'}</div>
+          <div className="page-hsub">{selService.name} · {selService.duration} min · {pro.full_name}</div>
         </div>
       </header>
       <main className="green-body">
@@ -756,17 +840,26 @@ function YogaPage({ patient, onNav }) {
   const [booked,  setBooked]  = useState(new Set())
   const [toast,   setToast]   = useState(null)
   const [err,     setErr]     = useState('')
+  const slotsRef = useRef([])
+
+  useEffect(() => {
+    slotsRef.current = slots
+  }, [slots])
 
   useEffect(() => {
     const now = new Date().toISOString()
     sb.from('availability_slots')
-      .select('*,services(name),bookings(id)')
+      .select('*,services(name),bookings(id,status)')
       .eq('published',true).gte('start_time',now).order('start_time').limit(20)
       .then(({ data, error }) => {
         if (error) { setErr('No se pudieron cargar las clases.') }
         else {
-          const yoga = (data||[]).filter(s => (s.services?.name||'').toLowerCase().includes('yoga'))
-          setSlots(yoga.length > 0 ? yoga : (data||[]))
+          const all = (data||[]).map(s => ({
+            ...s,
+            bookings: (s.bookings||[]).filter(b => b.status !== 'cancelled')
+          }))
+          const yoga = all.filter(s => (s.services?.name||'').toLowerCase().includes('yoga'))
+          setSlots(yoga.length > 0 ? yoga : all)
         }
         setLoading(false)
       })
@@ -774,10 +867,41 @@ function YogaPage({ patient, onNav }) {
       sb.from('bookings').select('slot_id').eq('patient_id',patient.id).neq('status','cancelled')
         .then(({ data }) => setBooked(new Set((data||[]).map(b => b.slot_id))))
     }
+
+    // Realtime: update seat counts when bookings change
+    const ch = sb.channel('yoga-bookings-watch')
+      .on('postgres_changes', { event: '*', schema:'public', table:'bookings' }, payload => {
+        const slotId = payload.new?.slot_id || payload.old?.slot_id
+        if (!slotId) return
+        setSlots(prev => prev.map(s => {
+          if (s.id !== slotId) return s
+          let bks = [...(s.bookings || [])]
+          if (payload.eventType === 'INSERT' && payload.new.status !== 'cancelled') {
+            if (!bks.find(b => b.id === payload.new.id)) bks.push({ id: payload.new.id, status: payload.new.status })
+          } else if (payload.eventType === 'UPDATE') {
+            bks = bks.filter(b => b.id !== payload.new.id)
+            if (payload.new.status !== 'cancelled') bks.push({ id: payload.new.id, status: payload.new.status })
+          } else if (payload.eventType === 'DELETE') {
+            bks = bks.filter(b => b.id !== payload.old.id)
+          }
+          return { ...s, bookings: bks }
+        }))
+      })
+      .subscribe()
+
+    return () => { sb.removeChannel(ch) }
   }, [patient?.id])
 
   const book = async (slot) => {
     if (!patient?.id) return
+    // Race condition check: verify capacity before booking
+    const { data: current } = await sb.from('bookings').select('id').eq('slot_id', slot.id).neq('status','cancelled')
+    const cap = slot.capacity || slot.max_bookings || 10
+    if ((current||[]).length >= cap) {
+      setToast({ msg:'Esta clase acaba de completarse. Elige otra.', type:'error' })
+      setSlots(prev => prev.map(s => s.id === slot.id ? { ...s, bookings: current || [] } : s))
+      return
+    }
     const { error } = await sb.from('bookings').insert({ patient_id:patient.id, slot_id:slot.id, status:'confirmed' })
     if (error) { setToast({ msg:'No se pudo reservar. Inténtalo de nuevo.', type:'error' }); return }
     setBooked(prev => new Set([...prev, slot.id]))
@@ -919,11 +1043,12 @@ function BellezaPage({ patient, onNav }) {
 
 // ─── Mis Reservas ─────────────────────────────────────────────────────────────
 function MisReservasPage({ patient, onNav }) {
-  const [items,    setItems]    = useState([])
-  const [loading,  setLoading]  = useState(true)
-  const [filter,   setFilter]   = useState('all')
-  const [toCancel, setToCancel] = useState(null)
+  const [items,      setItems]      = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [filter,     setFilter]     = useState('all')
+  const [toCancel,   setToCancel]   = useState(null)
   const [cancelling, setCancelling] = useState(false)
+  const [detailItem, setDetailItem] = useState(null)
 
   const FILTERS = [['all','Todas'],['upcoming','Próximas'],['past','Pasadas'],['cancelled','Canceladas']]
 
@@ -948,7 +1073,7 @@ function MisReservasPage({ patient, onNav }) {
   const cancel = async () => {
     if (!toCancel) return; setCancelling(true)
     const table = toCancel.source === 'appointment' ? 'appointments' : 'bookings'
-    await sb.from(table).update({ status:'cancelled' }).eq('id', toCancel.id)
+    await sb.from(table).update({ status:'cancelled', cancelled_by:'patient' }).eq('id', toCancel.id)
     setItems(prev => prev.map(i => i.id===toCancel.id && i.source===toCancel.source ? {...i,status:'cancelled'} : i))
     setCancelling(false); setToCancel(null)
   }
@@ -996,15 +1121,42 @@ function MisReservasPage({ patient, onNav }) {
               <div className="cita-name">{item.name}</div>
               <div className="cita-date">{fDT(item.date)}</div>
               {item.pro && <div className="cita-pro">{item.pro}</div>}
-              {canCancel(item) && (
-                <div className="cita-actions">
-                  <button className="cita-act-btn cita-act-cancel" onClick={() => setToCancel(item)}>Cancelar cita</button>
-                </div>
-              )}
+              <div className="cita-actions">
+                <button className="cita-act-btn" style={{ background:'var(--green-subtle)', color:'var(--green-dark)' }} onClick={() => setDetailItem(item)}>Ver detalle</button>
+                {canCancel(item) && <button className="cita-act-btn cita-act-cancel" onClick={() => setToCancel(item)}>Cancelar</button>}
+              </div>
             </div>
           )
         })}
       </main>
+
+      {detailItem && (
+        <div className="modal-overlay" onClick={() => setDetailItem(null)}>
+          <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <div className="modal-title">{detailItem.name}</div>
+            <div style={{ marginBottom:20 }}>
+              {[
+                ['Tipo',        <span className={`cita-tipo ${detailItem.type}`}>{detailItem.typeLabel}</span>],
+                ['Estado',      <span className={`cita-st ${detailItem.status}`}>{STATUS_LABEL[detailItem.status]||detailItem.status}</span>],
+                ['Fecha',       fDT(detailItem.date)],
+                detailItem.pro ? ['Profesional', detailItem.pro] : null,
+              ].filter(Boolean).map(([label, val]) => (
+                <div key={label} className="perfil-item" style={{ padding:'12px 0' }}>
+                  <span className="perfil-item-label">{label}</span>
+                  <span className="perfil-item-value">{val}</span>
+                </div>
+              ))}
+            </div>
+            {canCancel(detailItem) && (
+              <button className="modal-btn-confirm" style={{ marginBottom:10 }} onClick={() => { setDetailItem(null); setToCancel(detailItem) }}>
+                Cancelar esta cita
+              </button>
+            )}
+            <button className="modal-btn-back" onClick={() => setDetailItem(null)}>Cerrar</button>
+          </div>
+        </div>
+      )}
 
       {toCancel && (
         <div className="modal-overlay" onClick={() => setToCancel(null)}>
@@ -1028,7 +1180,46 @@ function MisReservasPage({ patient, onNav }) {
 }
 
 // ─── Perfil ───────────────────────────────────────────────────────────────────
-function PerfilPage({ patient, onNav, onLogout }) {
+function PerfilPage({ patient, onNav, onLogout, onPatientUpdate }) {
+  const [editing,  setEditing]  = useState(false)
+  const [form,     setForm]     = useState({ full_name: patient?.full_name||'', phone: patient?.phone||'' })
+  const [whatsapp, setWhatsapp] = useState(patient?.whatsapp_notifications ?? true)
+  const [saving,   setSaving]   = useState(false)
+  const [toast,    setToast]    = useState(null)
+  const [completed,setCompleted]= useState(null)
+  const [memberSince, setMemberSince] = useState(patient?.created_at || null)
+
+  useEffect(() => {
+    if (!patient?.id) return
+    sb.from('appointments').select('id', { count:'exact', head:true }).eq('patient_id', patient.id).eq('status','completed')
+      .then(({ count }) => setCompleted(count || 0))
+  }, [patient?.id])
+
+  const upd = e => setForm(f => ({...f, [e.target.name]: e.target.value}))
+
+  const save = async () => {
+    if (!patient?.id || !form.full_name.trim()) return
+    setSaving(true)
+    const { error } = await sb.from('patients').update({
+      full_name: form.full_name.trim(),
+      phone:     form.phone.trim(),
+      whatsapp_notifications: whatsapp,
+    }).eq('id', patient.id)
+    if (error) {
+      setToast({ msg:'No se pudo guardar los cambios.', type:'error' })
+    } else {
+      onPatientUpdate({ ...patient, full_name:form.full_name.trim(), phone:form.phone.trim(), whatsapp_notifications:whatsapp })
+      setToast({ msg:'Perfil actualizado ✓', type:'ok' })
+      setEditing(false)
+    }
+    setSaving(false)
+  }
+
+  const toggleWhatsapp = async (val) => {
+    setWhatsapp(val)
+    await sb.from('patients').update({ whatsapp_notifications: val }).eq('id', patient?.id)
+  }
+
   return (
     <div className="screen">
       <header className="green-header">
@@ -1039,21 +1230,79 @@ function PerfilPage({ patient, onNav, onLogout }) {
         </div>
       </header>
       <main className="green-body">
-        <p className="section-label">Mi cuenta</p>
-        <div style={{ background:'var(--white)', borderRadius:'var(--radius-lg)', border:'1px solid var(--border)', overflow:'hidden' }}>
-          {[
-            { label:'Nombre', value:patient?.full_name || '—' },
-            { label:'Teléfono', value:patient?.phone || '—' },
-            { label:'Email', value:patient?.email || '—' },
-          ].map(({ label, value }) => (
-            <div key={label} className="perfil-item" style={{ padding:'14px 16px' }}>
-              <span className="perfil-item-label">{label}</span>
-              <span className="perfil-item-value">{value}</span>
+
+        {/* Stats */}
+        <div className="stat-row">
+          <div className="stat-box" style={{ background:'var(--green-subtle)', border:'1px solid var(--border)' }}>
+            <div className="stat-box-val" style={{ color:'var(--green-dark)' }}>{completed ?? '…'}</div>
+            <div className="stat-box-lbl" style={{ color:'var(--text-muted)' }}>Citas realizadas</div>
+          </div>
+          {memberSince && (
+            <div className="stat-box" style={{ background:'var(--gold-light)', border:'1px solid #e6d09a' }}>
+              <div className="stat-box-val" style={{ fontSize:15, color:'#7a5c10' }}>
+                {new Date(memberSince).toLocaleDateString('es-ES', { month:'short', year:'numeric' })}
+              </div>
+              <div className="stat-box-lbl" style={{ color:'#9a7c30' }}>Miembro desde</div>
             </div>
-          ))}
+          )}
         </div>
+
+        {/* Edit / display */}
+        <p className="section-label">Mi cuenta</p>
+        {editing ? (
+          <>
+            <div className="perfil-field">
+              <label>Nombre completo</label>
+              <input name="full_name" value={form.full_name} onChange={upd} placeholder="Tu nombre" autoFocus />
+            </div>
+            <div className="perfil-field">
+              <label>Teléfono</label>
+              <input name="phone" type="tel" value={form.phone} onChange={upd} placeholder="612 345 678" />
+            </div>
+            <button className="perfil-save-btn" onClick={save} disabled={saving || !form.full_name.trim()}>
+              {saving ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+            <button className="perfil-edit-btn" onClick={() => { setEditing(false); setForm({ full_name:patient?.full_name||'', phone:patient?.phone||'' }) }}>
+              Cancelar
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{ background:'var(--white)', borderRadius:'var(--radius-lg)', border:'1px solid var(--border)', overflow:'hidden', marginBottom:8 }}>
+              {[
+                { label:'Nombre',   value:patient?.full_name || '—' },
+                { label:'Teléfono', value:patient?.phone || '—' },
+              ].map(({ label, value }) => (
+                <div key={label} className="perfil-item" style={{ padding:'14px 16px' }}>
+                  <span className="perfil-item-label">{label}</span>
+                  <span className="perfil-item-value">{value}</span>
+                </div>
+              ))}
+            </div>
+            <button className="perfil-edit-btn" onClick={() => setEditing(true)}>
+              ✏️ Editar perfil
+            </button>
+          </>
+        )}
+
+        {/* WhatsApp toggle */}
+        <div className="wapp-row">
+          <div>
+            <div className="wapp-label">📱 Avisos por WhatsApp</div>
+            <div className="wapp-sub">Recordatorios de citas</div>
+          </div>
+          <button
+            className="toggle-track"
+            style={{ background: whatsapp ? 'var(--green)' : 'var(--border)' }}
+            onClick={() => toggleWhatsapp(!whatsapp)}
+          >
+            <div className="toggle-thumb" style={{ left: whatsapp ? 23 : 3 }} />
+          </button>
+        </div>
+
         <button className="perfil-logout" onClick={onLogout}>Cerrar sesión</button>
       </main>
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       <BottomNav page="perfil" onNav={onNav} />
     </div>
   )
@@ -1103,6 +1352,10 @@ export default function App() {
     setUser(null); setPatient(null); setPage('home')
   }
 
+  const updatePatient = (updated) => {
+    setPatient(updated)
+  }
+
   const nav = (p) => {
     if (p === 'reservar') { setPage('osteopatia'); return }  // Reservar → Osteopatía by default
     setPage(p)
@@ -1135,7 +1388,7 @@ export default function App() {
       return <MisReservasPage patient={patient} onNav={nav} />
 
     case 'perfil':
-      return <PerfilPage patient={patient} onNav={nav} onLogout={logout} />
+      return <PerfilPage patient={patient} onNav={nav} onLogout={logout} onPatientUpdate={updatePatient} />
 
     default:
       return <HomePage patient={patient} onNav={nav} />
