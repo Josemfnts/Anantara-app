@@ -465,13 +465,13 @@ function HomePage({ patient, onNav }) {
 
     // Next appointment
     sb.from('appointments')
-      .select('start_time,services(name),professionals(full_name)')
+      .select('start_time,services(name),professionals(name)')
       .eq('patient_id', patient.id).eq('status','confirmed').gte('start_time', now)
       .order('start_time').limit(1)
       .then(async ({ data: appts }) => {
         if (appts?.length) {
           const a = appts[0]
-          setNextAppt({ date:a.start_time, name:[a.services?.name,a.professionals?.full_name].filter(Boolean).join(' · ') || 'Osteopatía' })
+          setNextAppt({ date:a.start_time, name:[a.services?.name,a.professionals?.name].filter(Boolean).join(' · ') || 'Osteopatía' })
         } else {
           const { data: bks } = await sb.from('bookings')
             .select('availability_slots(start_time,services(name))')
@@ -485,10 +485,10 @@ function HomePage({ patient, onNav }) {
 
     // Recent items
     Promise.all([
-      sb.from('appointments').select('id,start_time,status,services(name),professionals(full_name)').eq('patient_id',patient.id).order('start_time',{ascending:false}).limit(4),
+      sb.from('appointments').select('id,start_time,status,services(name),professionals(name)').eq('patient_id',patient.id).order('start_time',{ascending:false}).limit(4),
       sb.from('bookings').select('id,status,created_at,availability_slots(start_time,services(name))').eq('patient_id',patient.id).order('created_at',{ascending:false}).limit(4),
     ]).then(([{ data:a }, { data:b }]) => {
-      const ai = (a||[]).map(x => ({ id:`a-${x.id}`, type:'osteo', name:x.services?.name||'Osteopatía', pro:x.professionals?.full_name, date:x.start_time, status:x.status }))
+      const ai = (a||[]).map(x => ({ id:`a-${x.id}`, type:'osteo', name:x.services?.name||'Osteopatía', pro:x.professionals?.name, date:x.start_time, status:x.status }))
       const bi = (b||[]).map(x => {
         const n = x.availability_slots?.services?.name || ''; const isY = n.toLowerCase().includes('yoga')
         return { id:`b-${x.id}`, type:isY?'yoga':'belleza', name:n||'Clase', date:x.availability_slots?.start_time||x.created_at, status:x.status }
@@ -571,7 +571,7 @@ function OsteopatiaPage({ onNav, onSelectPro }) {
   const [err,     setErr]     = useState('')
 
   useEffect(() => {
-    sb.from('professionals').select('id,full_name,specialty,bio').eq('active',true).order('full_name')
+    sb.from('professionals').select('id,name,specialty,bio').eq('is_active',true).order('name')
       .then(({ data, error }) => {
         if (error) setErr('No se pudo cargar la lista de profesionales.')
         else setProfs(data||[])
@@ -595,9 +595,9 @@ function OsteopatiaPage({ onNav, onSelectPro }) {
         {!loading && !err && profs.length === 0 && <p className="no-recent">No hay profesionales disponibles en este momento.</p>}
         {profs.map((pro, idx) => (
           <div key={pro.id} className={`pro-card ${selected?.id===pro.id?'selected':''}`} onClick={() => setSelected(pro)}>
-            <div className={`pro-avatar ${AVATAR_COLORS[idx % AVATAR_COLORS.length]}`}>{initials(pro.full_name)}</div>
+            <div className={`pro-avatar ${AVATAR_COLORS[idx % AVATAR_COLORS.length]}`}>{initials(pro.name)}</div>
             <div className="pro-info">
-              <div className="pro-name">{pro.full_name}</div>
+              <div className="pro-name">{pro.name}</div>
               <div className="pro-spec">{pro.specialty || 'Osteópata'}</div>
               <span className="pro-avail">Ver disponibilidad →</span>
             </div>
@@ -719,7 +719,7 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
       <div className="success-screen">
         <div className="success-icon">✅</div>
         <div className="success-title">¡Cita solicitada!</div>
-        <p className="success-sub">{selService?.name}<br />{selDate} a las {selSlot}h<br />con {pro.full_name}<br /><span style={{ fontSize:12, color:'var(--text-muted)' }}>Recibirás confirmación pronto</span></p>
+        <p className="success-sub">{selService?.name}<br />{selDate} a las {selSlot}h<br />con {pro.name}<br /><span style={{ fontSize:12, color:'var(--text-muted)' }}>Recibirás confirmación pronto</span></p>
         <button className="main-btn" style={{ width:'auto', padding:'14px 32px' }} onClick={() => onNav('mis-reservas')}>
           Ver mis citas
         </button>
@@ -733,7 +733,7 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
       <div className="screen">
         <header className="green-header">
           <div className="green-header-inner">
-            <button className="page-back" onClick={onBack}>‹ {pro.full_name}</button>
+            <button className="page-back" onClick={onBack}>‹ {pro.name}</button>
             <div className="page-htitle">Tipo de consulta</div>
             <div className="page-hsub">¿Qué tipo de cita necesitas?</div>
           </div>
@@ -768,7 +768,7 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
         <div className="green-header-inner">
           <button className="page-back" onClick={() => setSelService(null)}>‹ Tipo de consulta</button>
           <div className="page-htitle">Elige tu cita</div>
-          <div className="page-hsub">{selService.name} · {selService.duration} min · {pro.full_name}</div>
+          <div className="page-hsub">{selService.name} · {selService.duration} min · {pro.name}</div>
         </div>
       </header>
       <main className="green-body">
@@ -971,76 +971,225 @@ function YogaPage({ patient, onNav }) {
 
 // ─── Belleza ──────────────────────────────────────────────────────────────────
 function BellezaPage({ patient, onNav }) {
-  const [slots,   setSlots]   = useState([])
-  const [loading, setLoading] = useState(true)
-  const [booked,  setBooked]  = useState(new Set())
-  const [toast,   setToast]   = useState(null)
+  const today = new Date(); today.setHours(0,0,0,0)
+  const [step,       setStep]       = useState('services') // services | profs | calendar | success
+  const [services,   setServices]   = useState([])
+  const [profs,      setProfs]      = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [selService, setSelService] = useState(null)
+  const [selProf,    setSelProf]    = useState(null)
+  const [year,       setYear]       = useState(today.getFullYear())
+  const [month,      setMonth]      = useState(today.getMonth())
+  const [avail,      setAvail]      = useState(new Set())
+  const [dayLoad,    setDayLoad]    = useState(true)
+  const [selDate,    setSelDate]    = useState(null)
+  const [slots,      setSlots]      = useState([])
+  const [slLoad,     setSlLoad]     = useState(false)
+  const [selSlot,    setSelSlot]    = useState(null)
+  const [confirming, setConfirming] = useState(false)
+  const [err,        setErr]        = useState('')
+  const [toast,      setToast]      = useState(null)
 
+  // Load services + professionals once
   useEffect(() => {
-    const now = new Date().toISOString()
-    sb.from('availability_slots')
-      .select('*,services(name),bookings(id)')
-      .eq('published',true).gte('start_time',now).order('start_time').limit(20)
-      .then(({ data }) => {
-        const belleza = (data||[]).filter(s => {
-          const n = (s.services?.name||'').toLowerCase()
-          return n.includes('belleza') || n.includes('facial') || n.includes('masaje') || n.includes('tratamiento')
-        })
-        setSlots(belleza); setLoading(false)
-      })
-    if (patient?.id) {
-      sb.from('bookings').select('slot_id').eq('patient_id',patient.id).neq('status','cancelled')
-        .then(({ data }) => setBooked(new Set((data||[]).map(b => b.slot_id))))
-    }
-  }, [patient?.id])
+    Promise.all([
+      sb.from('services').select('id,name,duration_minutes,price,description').eq('section','beauty').eq('is_active',true).order('name'),
+      sb.from('professionals').select('id,name,specialty').eq('section','beauty').eq('is_active',true).order('name'),
+    ]).then(([{ data: svcs }, { data: pros }]) => {
+      setServices(svcs || [])
+      setProfs(pros || [])
+      setLoading(false)
+    })
+  }, [])
 
-  const book = async (slot) => {
-    if (!patient?.id) return
-    const { error } = await sb.from('bookings').insert({ patient_id:patient.id, slot_id:slot.id, status:'confirmed' })
-    if (error) { setToast({ msg:'No se pudo reservar.', type:'error' }); return }
-    setBooked(prev => new Set([...prev, slot.id]))
-    setToast({ msg:`¡Reserva de ${slot.services?.name||'tratamiento'} confirmada! ✓`, type:'ok' })
+  // Load available days when prof/month changes
+  useEffect(() => {
+    if (!selProf) return
+    setDayLoad(true); setSelDate(null); setSelSlot(null); setSlots([])
+    const start = dateStr(year, month, 1)
+    const end   = dateStr(year, month, new Date(year, month+1, 0).getDate())
+    Promise.all([
+      sb.from('working_hours').select('day_of_week,active').eq('professional_id', selProf.id).eq('active', true),
+      sb.from('blocked_days').select('blocked_date').eq('professional_id', selProf.id).gte('blocked_date', start).lte('blocked_date', end),
+    ]).then(([{ data: wh }, { data: bd }]) => {
+      const workDOW = new Set((wh||[]).map(r => r.day_of_week))
+      const blocked = new Set((bd||[]).map(r => r.blocked_date))
+      const last = new Date(year, month+1, 0).getDate()
+      const available = new Set()
+      for (let d = 1; d <= last; d++) {
+        const dt  = new Date(year, month, d)
+        const dow = dt.getDay()
+        const isWorking = workDOW.size === 0 ? (dow !== 0 && dow !== 6) : workDOW.has(dow)
+        const ds = dateStr(year, month, d)
+        if (dt >= today && isWorking && !blocked.has(ds)) available.add(d)
+      }
+      setAvail(available); setDayLoad(false)
+    })
+  }, [selProf, year, month])
+
+  const fetchSlots = async (day) => {
+    setSlLoad(true); setSlots([]); setSelSlot(null)
+    const ds = dateStr(year, month, day); setSelDate(ds)
+    const { data: existing } = await sb.from('appointments').select('start_time')
+      .eq('professional_id', selProf.id).gte('start_time', ds+'T00:00:00').lte('start_time', ds+'T23:59:59').neq('status','cancelled')
+    const taken = new Set((existing||[]).map(a => a.start_time.slice(11,16)))
+    const hours = [9,10,11,12,13,16,17,18]
+    setSlots(hours.map(h => ({ time:`${pad(h)}:00`, available: !taken.has(`${pad(h)}:00`) })))
+    setSlLoad(false)
   }
 
-  return (
+  const confirm = async () => {
+    if (!selDate || !selSlot || !patient?.id || !selService || !selProf) return
+    setConfirming(true); setErr('')
+    const dur = selService.duration_minutes || 60
+    const startDT = new Date(`${selDate}T${selSlot}:00`)
+    const endDT   = new Date(startDT.getTime() + dur * 60000)
+    const { data: existing } = await sb.from('appointments').select('id')
+      .eq('professional_id', selProf.id)
+      .gte('start_time', startDT.toISOString()).lt('start_time', endDT.toISOString())
+      .neq('status','cancelled')
+    if (existing?.length > 0) {
+      setErr('Este hueco acaba de ser ocupado. Elige otra hora.')
+      setSelSlot(null); setConfirming(false); return
+    }
+    const { error } = await sb.from('appointments').insert({
+      patient_id: patient.id, professional_id: selProf.id,
+      start_time: startDT.toISOString(), end_time: endDT.toISOString(),
+      status: 'pending', notes: selService.name,
+    })
+    setConfirming(false)
+    if (error) { setErr(error.message); return }
+    setStep('success')
+  }
+
+  const prevMonth = () => { if(month===0){setYear(y=>y-1);setMonth(11)}else setMonth(m=>m-1) }
+  const nextMonth = () => { if(month===11){setYear(y=>y+1);setMonth(0)}else setMonth(m=>m+1) }
+  const prevDisabled = year < today.getFullYear() || (year===today.getFullYear() && month<=today.getMonth())
+  const HEADER_STYLE = { background:'linear-gradient(160deg,var(--purple),#9b6dd6)' }
+
+  // ── Success ──
+  if (step === 'success') return (
+    <div className="success-screen">
+      <div className="success-icon">✅</div>
+      <div className="success-title">¡Cita solicitada!</div>
+      <p className="success-sub">{selService?.name}<br/>{selDate} a las {selSlot}h<br/>con {selProf?.name}<br/><span style={{fontSize:12,color:'var(--text-muted)'}}>Recibirás confirmación pronto</span></p>
+      <button className="main-btn" style={{width:'auto',padding:'14px 32px'}} onClick={() => onNav('mis-reservas')}>Ver mis citas</button>
+    </div>
+  )
+
+  // ── Step: services ──
+  if (step === 'services') return (
     <div className="screen">
-      <header className="green-header" style={{ background:'linear-gradient(160deg,var(--purple),#9b6dd6)' }}>
+      <header className="green-header" style={HEADER_STYLE}>
         <div className="green-header-inner">
           <button className="page-back" onClick={() => onNav('home')}>‹ Inicio</button>
           <div className="page-htitle">Belleza</div>
-          <div className="page-hsub">Tratamientos y servicios</div>
+          <div className="page-hsub">Elige un tratamiento</div>
         </div>
       </header>
       <main className="green-body">
-        <p className="section-label">Disponibles</p>
-        {loading && <><div className="skel" style={{ height:160, marginBottom:12, borderRadius:14 }} /></>}
-        {!loading && slots.length === 0 && (
-          <div className="empty-state"><div className="empty-icon">✨</div><div className="empty-title">Sin tratamientos próximos</div><div className="empty-sub">Vuelve pronto</div></div>
-        )}
-        {slots.map(slot => {
-          const bookedCount = Array.isArray(slot.bookings) ? slot.bookings.length : 0
-          const cap  = slot.capacity || 10; const free = cap - bookedCount; const full = free <= 0; const isB = booked.has(slot.id)
-          return (
-            <div key={slot.id} className="class-card">
-              <div className={`class-card-hero class-hero-${full?'gray':'purple'}`}>✨</div>
-              <div className="class-card-body">
-                <div className="class-name">{slot.services?.name || 'Tratamiento'}</div>
-                <div className="class-date">{fDT(slot.start_time)}</div>
-                <div className="class-footer">
-                  <span>{full ? <span className="full-tag">Completo</span> : <span className="places-tag"><strong>{free}</strong> plaza{free!==1?'s':''}</span>}</span>
-                  {!full && (
-                    <button className={`class-btn ${isB?'booked':''}`} onClick={() => !isB && book(slot)} disabled={isB}>
-                      {isB ? 'Reservado ✓' : 'Reservar'}
-                    </button>
-                  )}
-                </div>
-              </div>
+        <p className="section-label">Servicios disponibles</p>
+        {loading && <><div className="skel" style={{height:76,marginBottom:10}}/><div className="skel" style={{height:76,marginBottom:10}}/><div className="skel" style={{height:76}}/></>}
+        {!loading && services.length === 0 && <div className="empty-state"><div className="empty-icon">✨</div><div className="empty-title">Sin servicios activos</div><div className="empty-sub">Próximamente</div></div>}
+        {services.map(svc => (
+          <div key={svc.id} className={`svc-card ${selService?.id===svc.id?'selected':''}`} onClick={() => setSelService(svc)}>
+            <div className="svc-icon2" style={{background:'linear-gradient(135deg,var(--purple),#9b6dd6)'}}>✨</div>
+            <div className="svc-info">
+              <div className="svc-name">{svc.name}</div>
+              <div className="svc-dur">{svc.duration_minutes} min{svc.price!=null?` · ${svc.price}€`:''}{svc.description?` · ${svc.description}`:''}</div>
             </div>
-          )
-        })}
+            <div className="svc-check">✓</div>
+          </div>
+        ))}
+        <button className="main-btn" disabled={!selService} onClick={() => setStep('profs')} style={{background:'var(--purple)'}}>
+          {selService ? `Continuar con ${selService.name} →` : 'Selecciona un servicio'}
+        </button>
       </main>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       <BottomNav page="belleza" onNav={onNav} />
+    </div>
+  )
+
+  // ── Step: professionals ──
+  if (step === 'profs') return (
+    <div className="screen">
+      <header className="green-header" style={HEADER_STYLE}>
+        <div className="green-header-inner">
+          <button className="page-back" onClick={() => { setStep('services'); setSelProf(null) }}>‹ Servicios</button>
+          <div className="page-htitle">Profesional</div>
+          <div className="page-hsub">{selService?.name}</div>
+        </div>
+      </header>
+      <main className="green-body">
+        <p className="section-label">Elige tu profesional</p>
+        {profs.length === 0 && <p className="no-recent">No hay profesionales disponibles.</p>}
+        {profs.map((pro, idx) => (
+          <div key={pro.id} className={`pro-card ${selProf?.id===pro.id?'selected':''}`} onClick={() => setSelProf(pro)}>
+            <div className={`pro-avatar ${AVATAR_COLORS[idx % AVATAR_COLORS.length]}`}>{initials(pro.name)}</div>
+            <div className="pro-info">
+              <div className="pro-name">{pro.name}</div>
+              <div className="pro-spec">{pro.specialty || 'Especialista en belleza'}</div>
+            </div>
+            <div className="pro-check">✓</div>
+          </div>
+        ))}
+        <button className="main-btn" disabled={!selProf} onClick={() => setStep('calendar')} style={{background:'var(--purple)'}}>
+          Ver disponibilidad →
+        </button>
+      </main>
+    </div>
+  )
+
+  // ── Step: calendar ──
+  const grid = buildMonthGrid(year, month)
+  const todayDay = today.getFullYear()===year && today.getMonth()===month ? today.getDate() : -1
+  return (
+    <div className="screen">
+      <header className="green-header" style={HEADER_STYLE}>
+        <div className="green-header-inner">
+          <button className="page-back" onClick={() => { setStep('profs'); setSelDate(null); setSelSlot(null) }}>‹ {selProf?.name}</button>
+          <div className="page-htitle">Elige tu cita</div>
+          <div className="page-hsub">{selService?.name} · {selService?.duration_minutes} min</div>
+        </div>
+      </header>
+      <main className="green-body">
+        <div className="cal-month-nav">
+          <button className="cal-nav-btn" onClick={prevMonth} disabled={prevDisabled}>‹</button>
+          <span className="cal-month-name">{MONTH_FULL[month]} {year}</span>
+          <button className="cal-nav-btn" onClick={nextMonth}>›</button>
+        </div>
+        <div className="cal-day-labels">{WEEK_DAYS.map(d=><div key={d} className="cal-day-lbl">{d}</div>)}</div>
+        {dayLoad ? <div className="skel" style={{height:200,borderRadius:14,marginBottom:16}}/> : (
+          <div className="cal-grid">
+            {grid.map((day,i) => {
+              if (!day) return <div key={`e-${i}`} className="cal-day-cell"/>
+              const ds = dateStr(year,month,day)
+              const isAvail = avail.has(day); const isToday = day===todayDay; const isSel = ds===selDate
+              let cls = 'cal-day-cell'
+              if (isSel) cls += ' selected'
+              else if (isAvail) cls += ' available'+(isToday?' today':'')
+              return <div key={day} className={cls} onClick={() => isAvail && fetchSlots(day)}>{day}</div>
+            })}
+          </div>
+        )}
+        {selDate && (<>
+          <div className="slots-section-title">Horas disponibles · {selDate}</div>
+          {slLoad ? <div className="skel" style={{height:48,marginBottom:16}}/> : slots.length===0 ? <p className="no-slots">No hay horas disponibles este día</p> : (
+            <div className="slots-grid">
+              {slots.map(s => (
+                <button key={s.time} className={`slot-btn ${!s.available?'taken':selSlot===s.time?'selected':''}`}
+                  onClick={() => s.available && setSelSlot(s.time)} disabled={!s.available}>{s.time}</button>
+              ))}
+            </div>
+          )}
+        </>)}
+        {selSlot && <div className="confirm-banner"><span>🗓</span><span className="confirm-banner-text">{selDate} a las {selSlot}h</span></div>}
+        {err && <p style={{color:'#dc2626',fontSize:13,textAlign:'center',marginBottom:8}}>{err}</p>}
+        <button className="main-btn" disabled={!selSlot||confirming} onClick={confirm} style={{background:'var(--purple)'}}>
+          {confirming ? 'Reservando…' : selSlot ? `Confirmar · ${selSlot}h` : 'Selecciona una hora'}
+        </button>
+      </main>
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )
 }
@@ -1060,13 +1209,13 @@ function MisReservasPage({ patient, onNav }) {
     if (!patient?.id) return
     setLoading(true)
     const [{ data:a }, { data:b }] = await Promise.all([
-      sb.from('appointments').select('id,start_time,status,services(name),professionals(full_name)').eq('patient_id',patient.id).order('start_time',{ascending:false}),
-      sb.from('bookings').select('id,status,created_at,slot_id,availability_slots(start_time,services(name),professionals(full_name))').eq('patient_id',patient.id).order('created_at',{ascending:false}),
+      sb.from('appointments').select('id,start_time,status,services(name),professionals(name)').eq('patient_id',patient.id).order('start_time',{ascending:false}),
+      sb.from('bookings').select('id,status,created_at,slot_id,availability_slots(start_time,services(name),professionals(name))').eq('patient_id',patient.id).order('created_at',{ascending:false}),
     ])
-    const ai = (a||[]).map(x => ({ id:x.id, type:'osteo', typeLabel:'Osteopatía', name:x.services?.name||'Osteopatía', pro:x.professionals?.full_name, date:x.start_time, status:x.status||'pending', source:'appointment' }))
+    const ai = (a||[]).map(x => ({ id:x.id, type:'osteo', typeLabel:'Osteopatía', name:x.services?.name||'Osteopatía', pro:x.professionals?.name, date:x.start_time, status:x.status||'pending', source:'appointment' }))
     const bi = (b||[]).map(x => {
       const n = x.availability_slots?.services?.name||''; const isY = n.toLowerCase().includes('yoga')
-      return { id:x.id, type:isY?'yoga':'belleza', typeLabel:isY?'Yoga':'Belleza', name:n||'Clase', pro:x.availability_slots?.professionals?.full_name, date:x.availability_slots?.start_time||x.created_at, status:x.status||'pending', source:'booking' }
+      return { id:x.id, type:isY?'yoga':'belleza', typeLabel:isY?'Yoga':'Belleza', name:n||'Clase', pro:x.availability_slots?.professionals?.name, date:x.availability_slots?.start_time||x.created_at, status:x.status||'pending', source:'booking' }
     })
     setItems([...ai,...bi].sort((x,y) => new Date(y.date)-new Date(x.date)))
     setLoading(false)
