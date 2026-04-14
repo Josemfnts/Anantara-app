@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
 
 // ─── Supabase ────────────────────────────────────────────────────────────────
 const sb = createClient(
@@ -1320,8 +1320,8 @@ export default function App() {
   const [page,     setPage]     = useState('home')
   const [selPro,   setSelPro]   = useState(null)  // selected professional for osteo calendar
 
-  // Inject CSS
-  useEffect(() => {
+  // Inject CSS before first paint (useLayoutEffect avoids flash of unstyled content)
+  useLayoutEffect(() => {
     const el = document.createElement('style')
     el.textContent = CSS
     document.head.appendChild(el)
