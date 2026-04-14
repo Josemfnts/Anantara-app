@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 // ─── Supabase ────────────────────────────────────────────────────────────────
 const sb = createClient(
@@ -8,8 +8,8 @@ const sb = createClient(
   { auth: { storageKey: 'anantara-app' } }
 )
 
-// ─── CSS ─────────────────────────────────────────────────────────────────────
-const CSS = `
+// ─── CSS lives in index.css ───────────────────────────────────────────────────
+const _CSS_REMOVED = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
   :root {
     --green-dark:   #1d5c2e;
@@ -1319,14 +1319,6 @@ export default function App() {
   const [authLoad, setAuthLoad] = useState(true)
   const [page,     setPage]     = useState('home')
   const [selPro,   setSelPro]   = useState(null)  // selected professional for osteo calendar
-
-  // Inject CSS before first paint (useLayoutEffect avoids flash of unstyled content)
-  useLayoutEffect(() => {
-    const el = document.createElement('style')
-    el.textContent = CSS
-    document.head.appendChild(el)
-    return () => document.head.removeChild(el)
-  }, [])
 
   // Auth
   useEffect(() => {
