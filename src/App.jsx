@@ -193,13 +193,13 @@ function HomePage({ patient, onNav }) {
 
     // Next appointment
     sb.from('appointments')
-      .select('start_time,services(name),professionals(name)')
-      .eq('patient_id', patient.id).eq('status','confirmed').gte('start_time', now)
-      .order('start_time').limit(1)
+      .select('starts_at,services(name),professionals(name)')
+      .eq('patient_id', patient.id).eq('status','confirmed').gte('starts_at', now)
+      .order('starts_at').limit(1)
       .then(async ({ data: appts }) => {
         if (appts?.length) {
           const a = appts[0]
-          setNextAppt({ date:a.start_time, name:[a.services?.name,a.professionals?.name].filter(Boolean).join(' · ') || 'Osteopatía' })
+          setNextAppt({ date:a.starts_at, name:[a.services?.name,a.professionals?.name].filter(Boolean).join(' · ') || 'Osteopatía' })
         } else {
           const { data: bks } = await sb.from('bookings')
             .select('availability_slots(start_time,services(name))')
@@ -213,10 +213,10 @@ function HomePage({ patient, onNav }) {
 
     // Recent items
     Promise.all([
-      sb.from('appointments').select('id,start_time,status,services(name),professionals(name)').eq('patient_id',patient.id).order('start_time',{ascending:false}).limit(4),
+      sb.from('appointments').select('id,starts_at,status,services(name),professionals(name)').eq('patient_id',patient.id).order('starts_at',{ascending:false}).limit(4),
       sb.from('bookings').select('id,status,created_at,availability_slots(start_time,services(name))').eq('patient_id',patient.id).order('created_at',{ascending:false}).limit(4),
     ]).then(([{ data:a }, { data:b }]) => {
-      const ai = (a||[]).map(x => ({ id:`a-${x.id}`, type:'osteo', name:x.services?.name||'Osteopatía', pro:x.professionals?.name, date:x.start_time, status:x.status }))
+      const ai = (a||[]).map(x => ({ id:`a-${x.id}`, type:'osteo', name:x.services?.name||'Osteopatía', pro:x.professionals?.name, date:x.starts_at, status:x.status }))
       const bi = (b||[]).map(x => {
         const n = x.availability_slots?.services?.name || ''; const isY = n.toLowerCase().includes('yoga')
         return { id:`b-${x.id}`, type:isY?'yoga':'belleza', name:n||'Clase', date:x.availability_slots?.start_time||x.created_at, status:x.status }
@@ -399,9 +399,9 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
       } else throw new Error('fallback')
     } catch {
       // Fallback: generate from working hours
-      const { data: existing } = await sb.from('appointments').select('start_time')
-        .eq('professional_id',pro.id).gte('start_time',ds+'T00:00:00').lte('start_time',ds+'T23:59:59').neq('status','cancelled')
-      const taken = new Set((existing||[]).map(a => a.start_time.slice(11,16)))
+      const { data: existing } = await sb.from('appointments').select('starts_at')
+        .eq('professional_id',pro.id).gte('starts_at',ds+'T00:00:00').lte('starts_at',ds+'T23:59:59').neq('status','cancelled')
+      const taken = new Set((existing||[]).map(a => a.starts_at.slice(11,16)))
       const hours = [9,10,11,12,13,16,17,18]
       setSlots(hours.map(h => ({ time:`${pad(h)}:00`, available:!taken.has(`${pad(h)}:00`) })))
     }
@@ -417,8 +417,8 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
       // Race condition check: verify slot is still free before inserting
       const { data: existing } = await sb.from('appointments')
         .select('id').eq('professional_id', pro.id)
-        .gte('start_time', startDT.toISOString())
-        .lt('start_time', endDT.toISOString())
+        .gte('starts_at', startDT.toISOString())
+        .lt('starts_at', endDT.toISOString())
         .neq('status','cancelled')
       if (existing?.length > 0) {
         setErr('Este hueco acaba de ser ocupado. Elige otra hora.')
@@ -430,7 +430,8 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
         patient_id: patient.id,
         professional_id: pro.id,
         service_id: selService.id,
-        start_time: startDT.toISOString(),
+        starts_at: startDT.toISOString(),
+        ends_at: endDT.toISOString(),
         status: 'pending',
         notes: selService.name,
       })
@@ -753,9 +754,9 @@ function BellezaPage({ patient, onNav }) {
   const fetchSlots = async (day) => {
     setSlLoad(true); setSlots([]); setSelSlot(null)
     const ds = dateStr(year, month, day); setSelDate(ds)
-    const { data: existing } = await sb.from('appointments').select('start_time')
-      .eq('professional_id', selProf.id).gte('start_time', ds+'T00:00:00').lte('start_time', ds+'T23:59:59').neq('status','cancelled')
-    const taken = new Set((existing||[]).map(a => a.start_time.slice(11,16)))
+    const { data: existing } = await sb.from('appointments').select('starts_at')
+      .eq('professional_id', selProf.id).gte('starts_at', ds+'T00:00:00').lte('starts_at', ds+'T23:59:59').neq('status','cancelled')
+    const taken = new Set((existing||[]).map(a => a.starts_at.slice(11,16)))
     const hours = [9,10,11,12,13,16,17,18]
     setSlots(hours.map(h => ({ time:`${pad(h)}:00`, available: !taken.has(`${pad(h)}:00`) })))
     setSlLoad(false)
@@ -769,8 +770,8 @@ function BellezaPage({ patient, onNav }) {
     const endDT   = new Date(startDT.getTime() + dur * 60000)
     const { data: existing } = await sb.from('appointments').select('id')
       .eq('professional_id', selProf.id)
-      .gte('start_time', startDT.toISOString())
-      .lt('start_time', endDT.toISOString())
+      .gte('starts_at', startDT.toISOString())
+      .lt('starts_at', endDT.toISOString())
       .neq('status','cancelled')
     if (existing?.length > 0) {
       setErr('Este hueco acaba de ser ocupado. Elige otra hora.')
@@ -779,7 +780,8 @@ function BellezaPage({ patient, onNav }) {
     const { error } = await sb.from('appointments').insert({
       patient_id: patient.id, professional_id: selProf.id,
       service_id: selService.id,
-      start_time: startDT.toISOString(),
+      starts_at: startDT.toISOString(),
+      ends_at: endDT.toISOString(),
       status: 'pending', notes: selService.name,
     })
     setConfirming(false)
@@ -935,10 +937,10 @@ function MisReservasPage({ patient, onNav }) {
     if (!patient?.id) return
     setLoading(true)
     const [{ data:a }, { data:b }] = await Promise.all([
-      sb.from('appointments').select('id,start_time,status,services(name),professionals(name)').eq('patient_id',patient.id).order('start_time',{ascending:false}).limit(50),
+      sb.from('appointments').select('id,starts_at,status,services(name),professionals(name)').eq('patient_id',patient.id).order('starts_at',{ascending:false}).limit(50),
       sb.from('bookings').select('id,status,created_at,slot_id,availability_slots(start_time,services(name,section),professionals(name))').eq('patient_id',patient.id).order('created_at',{ascending:false}).limit(50),
     ])
-    const ai = (a||[]).map(x => ({ id:x.id, type:'osteo', typeLabel:'Osteopatía', name:x.services?.name||'Osteopatía', pro:x.professionals?.name, date:x.start_time, status:x.status||'pending', source:'appointment' }))
+    const ai = (a||[]).map(x => ({ id:x.id, type:'osteo', typeLabel:'Osteopatía', name:x.services?.name||'Osteopatía', pro:x.professionals?.name, date:x.starts_at, status:x.status||'pending', source:'appointment' }))
     const bi = (b||[]).map(x => {
       const sec = x.availability_slots?.services?.section||''; const isY = sec === 'yoga'
       const n = x.availability_slots?.services?.name||''
