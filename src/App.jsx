@@ -417,8 +417,8 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
       // Race condition check: verify slot is still free before inserting
       const { data: existing } = await sb.from('appointments')
         .select('id').eq('professional_id', pro.id)
+        .gte('start_time', startDT.toISOString())
         .lt('start_time', endDT.toISOString())
-        .gt('end_time', startDT.toISOString())
         .neq('status','cancelled')
       if (existing?.length > 0) {
         setErr('Este hueco acaba de ser ocupado. Elige otra hora.')
@@ -431,7 +431,6 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
         professional_id: pro.id,
         service_id: selService.id,
         start_time: startDT.toISOString(),
-        end_time: endDT.toISOString(),
         status: 'pending',
         notes: selService.name,
       })
@@ -770,7 +769,8 @@ function BellezaPage({ patient, onNav }) {
     const endDT   = new Date(startDT.getTime() + dur * 60000)
     const { data: existing } = await sb.from('appointments').select('id')
       .eq('professional_id', selProf.id)
-      .lt('start_time', endDT.toISOString()).gt('end_time', startDT.toISOString())
+      .gte('start_time', startDT.toISOString())
+      .lt('start_time', endDT.toISOString())
       .neq('status','cancelled')
     if (existing?.length > 0) {
       setErr('Este hueco acaba de ser ocupado. Elige otra hora.')
@@ -779,7 +779,7 @@ function BellezaPage({ patient, onNav }) {
     const { error } = await sb.from('appointments').insert({
       patient_id: patient.id, professional_id: selProf.id,
       service_id: selService.id,
-      start_time: startDT.toISOString(), end_time: endDT.toISOString(),
+      start_time: startDT.toISOString(),
       status: 'pending', notes: selService.name,
     })
     setConfirming(false)
