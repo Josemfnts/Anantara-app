@@ -63,7 +63,7 @@ button, input, select, textarea { font-family: inherit }
 /* ── Sage Header ── */
 .green-header { background: linear-gradient(170deg, #2C4A35 0%, #3D6B4F 100%); padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px 72px; position: relative }
 .green-header-inner { }
-.green-body { background: var(--cream); border-radius: 28px 28px 0 0; margin-top: -32px; padding: 24px 20px; flex: 1 }
+.green-body { background: var(--cream); border-radius: 28px 28px 0 0; margin-top: -32px; padding: 40px 20px 24px; flex: 1 }
 
 /* ── Home ── */
 .home-top-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px }
