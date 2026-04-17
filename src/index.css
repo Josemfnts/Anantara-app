@@ -46,6 +46,23 @@
   --shadow-md: 0 4px 16px rgba(44,74,53,.08), 0 1px 4px rgba(44,74,53,.04);
   --shadow-lg: 0 8px 32px rgba(44,74,53,.12), 0 2px 8px rgba(44,74,53,.06);
   --shadow-xl: 0 16px 48px rgba(44,74,53,.16), 0 4px 12px rgba(44,74,53,.08);
+
+  /* Backward-compat aliases for inline JSX styles */
+  --border: var(--stone);
+  --text: var(--ink);
+  --text-muted: var(--muted);
+  --text2: var(--body);
+  --bg: var(--cream);
+  --white: #ffffff;
+  --green-dark: var(--sage-deep);
+  --green: var(--sage);
+  --green-light: var(--sage-mid);
+  --green-subtle: var(--sage-subtle);
+  --purple: #7a52b0;
+  --purple-light: #ede8f7;
+  --radius: var(--r-sm);
+  --radius-lg: var(--r-lg);
+  --shadow: var(--shadow-sm);
 }
 
 /* ── Base ── */
