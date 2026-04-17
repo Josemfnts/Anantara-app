@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 // ─── Supabase ────────────────────────────────────────────────────────────────
 const sb = createClient(
@@ -8,278 +8,6 @@ const sb = createClient(
   { auth: { storageKey: 'anantara-app' } }
 )
 
-// ─── CSS lives in index.css ───────────────────────────────────────────────────
-const _CSS_REMOVED = `
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
-  :root {
-    --green-dark:   #1d5c2e;
-    --green:        #2d7a3f;
-    --green-light:  #3a9150;
-    --green-subtle: #e8f4eb;
-    --gold:         #C8A535;
-    --gold-light:   #f5e8a3;
-    --purple:       #7a52b0;
-    --purple-light: #ede8f7;
-    --bg:           #f0f5f0;
-    --white:        #ffffff;
-    --text:         #1a2e1d;
-    --text2:        #3d5c42;
-    --text-muted:   #7a9c80;
-    --border:       #d4e6d8;
-    --radius:       10px;
-    --radius-lg:    14px;
-    --shadow:       0 2px 12px rgba(29,92,46,.10);
-    --shadow-lg:    0 6px 24px rgba(29,92,46,.15);
-  }
-  body { font-family:'Inter',system-ui,sans-serif; background:#1d5c2e; color:var(--text); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; margin:0 }
-  button,input,select,textarea { font-family:inherit }
-
-  /* ── Mobile app shell — centered on desktop ── */
-  #root { display:flex; justify-content:center; align-items:flex-start; min-height:100svh }
-  .app-wrap { width:100%; max-width:430px; min-height:100svh; background:var(--bg); overflow-x:hidden }
-
-  /* ── Screen wrapper ── */
-  .screen { min-height:100svh; display:flex; flex-direction:column; background:var(--bg); padding-bottom:calc(60px + env(safe-area-inset-bottom)) }
-
-  /* ── Green header ── */
-  .green-header { background:linear-gradient(160deg,var(--green-dark),var(--green)); padding:calc(env(safe-area-inset-top,0px) + 16px) 20px 64px; position:relative }
-  .green-header-inner { }
-  .green-body { background:var(--white); border-radius:24px 24px 0 0; margin-top:-28px; padding:22px 20px; flex:1 }
-
-  /* ── Auth screen ── */
-  .auth-screen { min-height:100svh; display:flex; flex-direction:column; background:linear-gradient(160deg,var(--green-dark),var(--green)); overflow:hidden }
-  .auth-hero { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:48px 24px 32px }
-  .auth-logo { width:72px; height:72px; border-radius:50%; background:rgba(255,255,255,.15); border:2px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:900; color:#fff; margin-bottom:16px }
-  .auth-brand { font-size:26px; font-weight:900; letter-spacing:4px; color:#fff }
-  .auth-tagline { font-size:14px; color:rgba(255,255,255,.7); margin-top:6px; letter-spacing:.08em }
-  .auth-card { background:var(--white); border-radius:28px 28px 0 0; padding:28px 24px calc(24px + env(safe-area-inset-bottom)); margin-top:auto }
-  .auth-tabs { display:flex; background:var(--bg); border-radius:10px; padding:3px; margin-bottom:20px }
-  .auth-tabs button { flex:1; padding:8px; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; background:transparent; color:var(--text-muted); transition:all .15s }
-  .auth-tabs button.active { background:var(--white); color:var(--green); box-shadow:0 1px 6px rgba(0,0,0,.1) }
-  .auth-btn { width:100%; padding:14px; background:var(--green); color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:800; cursor:pointer; margin-top:4px; transition:background .15s }
-  .auth-btn:hover:not(:disabled) { background:var(--green-dark) }
-  .auth-btn:disabled { opacity:.5 }
-  .auth-err { background:#fee2e2; border:1px solid #fecaca; color:#dc2626; font-size:12px; padding:10px 14px; border-radius:10px; margin-bottom:14px; text-align:center }
-  .auth-field { margin-bottom:14px }
-  .auth-field label { display:block; font-size:12px; font-weight:700; color:var(--text2); margin-bottom:5px }
-  .auth-field input { width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:10px; font-size:14px; color:var(--text); background:var(--white); outline:none; transition:border-color .15s }
-  .auth-field input:focus { border-color:var(--green) }
-
-  /* ── Bottom Nav ── */
-  .bottom-nav { position:fixed; bottom:0; left:0; right:0; margin:0 auto; max-width:430px; height:calc(60px + env(safe-area-inset-bottom)); background:var(--white); border-top:1px solid var(--border); display:flex; align-items:flex-start; padding-top:6px; z-index:100; box-shadow:0 -2px 12px rgba(0,0,0,.06) }
-  .bnav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:4px 0; border:none; background:none; cursor:pointer; color:var(--text-muted); transition:color .15s; font-size:10px; font-weight:600 }
-  .bnav-item.active { color:var(--green) }
-  .bnav-icon { font-size:22px; line-height:1 }
-  .bnav-item.active .bnav-icon { filter:drop-shadow(0 1px 3px rgba(45,122,63,.35)) }
-
-  /* ── Home header ── */
-  .home-top-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px }
-  .home-avatar { width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,.25); border:1.5px solid rgba(255,255,255,.5); color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center }
-  .home-brand { font-size:12px; font-weight:800; letter-spacing:3px; color:rgba(255,255,255,.9) }
-  .home-bell { background:none; border:none; font-size:20px; cursor:pointer; padding:2px; color:rgba(255,255,255,.9) }
-  .home-greeting { font-size:13px; color:rgba(255,255,255,.65); margin-bottom:4px }
-  .home-name { font-size:24px; font-weight:900; color:#fff; margin-bottom:16px }
-  .next-cita-card { background:rgba(255,255,255,.15); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.25); border-radius:var(--radius-lg); padding:14px 16px; cursor:pointer; transition:background .15s }
-  .next-cita-card:hover { background:rgba(255,255,255,.22) }
-  .next-cita-label { font-size:10px; font-weight:700; letter-spacing:.08em; color:rgba(255,255,255,.6); text-transform:uppercase; margin-bottom:4px }
-  .next-cita-name { font-size:15px; font-weight:800; color:#fff }
-  .next-cita-date { font-size:12px; color:rgba(255,255,255,.75); margin-top:3px }
-  .no-cita { background:rgba(255,255,255,.1); border:1px dashed rgba(255,255,255,.3); border-radius:var(--radius-lg); padding:12px 16px; font-size:13px; color:rgba(255,255,255,.65); text-align:center }
-
-  /* ── Home services grid ── */
-  .section-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); margin-bottom:12px }
-  .services-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px }
-  .service-card { display:flex; flex-direction:column; gap:4px; padding:18px 16px; border-radius:var(--radius-lg); cursor:pointer; border:none; text-align:left; transition:transform .15s, box-shadow .15s; position:relative; overflow:hidden }
-  .service-card:active { transform:scale(.97) }
-  .service-card.osteo   { background:linear-gradient(135deg,var(--green-dark),var(--green-light)); color:#fff }
-  .service-card.yoga    { background:linear-gradient(135deg,#1a547a,#2e82b8); color:#fff }
-  .service-card.belleza { background:linear-gradient(135deg,var(--purple),#9b6dd6); color:#fff }
-  .service-card.citas   { background:linear-gradient(135deg,#9a7a20,var(--gold)); color:#fff }
-  .service-icon { font-size:28px; margin-bottom:4px }
-  .service-name { font-size:15px; font-weight:800 }
-  .service-sub  { font-size:11px; opacity:.75 }
-
-  /* ── Recent list ── */
-  .recent-item { display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--bg); border-radius:var(--radius-lg); margin-bottom:8px; cursor:pointer; border:none; width:100%; text-align:left }
-  .recent-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0 }
-  .recent-dot.osteo   { background:var(--green) }
-  .recent-dot.yoga    { background:#2e82b8 }
-  .recent-dot.belleza { background:var(--purple) }
-  .recent-info { flex:1; min-width:0 }
-  .recent-name { font-size:13px; font-weight:700; color:var(--text); overflow:hidden; white-space:nowrap; text-overflow:ellipsis }
-  .recent-date { font-size:11px; color:var(--text-muted); margin-top:1px }
-  .recent-status-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px; flex-shrink:0 }
-  .recent-status-badge.confirmed { background:var(--green-subtle); color:var(--green-dark) }
-  .recent-status-badge.pending   { background:var(--gold-light);   color:#7a5c10 }
-  .recent-status-badge.cancelled { background:#fee2e2; color:#dc2626 }
-  .recent-status-badge.completed { background:#f1f5f9; color:#64748b }
-  .no-recent { text-align:center; padding:24px 0; color:var(--text-muted); font-size:13px }
-
-  /* ── Page header (back nav) ── */
-  .page-back { background:none; border:none; font-size:14px; font-weight:700; color:rgba(255,255,255,.85); cursor:pointer; padding:0; display:flex; align-items:center; gap:4px; margin-bottom:10px }
-  .page-htitle { font-size:22px; font-weight:900; color:#fff }
-  .page-hsub   { font-size:14px; color:rgba(255,255,255,.7); margin-top:4px }
-
-  /* ── Professional cards ── */
-  .pro-card { display:flex; align-items:center; gap:14px; padding:16px; background:var(--white); border-radius:var(--radius-lg); border:2px solid var(--border); margin-bottom:10px; cursor:pointer; transition:border-color .15s }
-  .pro-card.selected { border-color:var(--green); background:var(--green-subtle) }
-  .pro-avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:900; color:#fff; flex-shrink:0 }
-  .pro-avatar.green  { background:linear-gradient(135deg,var(--green-dark),var(--green-light)) }
-  .pro-avatar.blue   { background:linear-gradient(135deg,#1a547a,#2e82b8) }
-  .pro-avatar.gold   { background:linear-gradient(135deg,#9a7a20,var(--gold)) }
-  .pro-info { flex:1 }
-  .pro-name  { font-size:14px; font-weight:800; color:var(--text) }
-  .pro-spec  { font-size:12px; color:var(--text-muted); margin-top:2px }
-  .pro-avail { font-size:11px; font-weight:700; color:var(--green); margin-top:4px; display:block }
-  .pro-check { font-size:18px; color:var(--green); opacity:0; transition:opacity .15s }
-  .pro-card.selected .pro-check { opacity:1 }
-  .pro-err   { color:#dc2626; font-size:13px; text-align:center; padding:12px 0 }
-
-  /* ── Calendar ── */
-  .cal-month-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px }
-  .cal-month-name { font-size:15px; font-weight:800; color:var(--text); text-transform:capitalize }
-  .cal-nav-btn { background:none; border:1.5px solid var(--border); border-radius:8px; width:32px; height:32px; font-size:16px; cursor:pointer; color:var(--text); transition:border-color .15s }
-  .cal-nav-btn:hover:not(:disabled) { border-color:var(--green); color:var(--green) }
-  .cal-nav-btn:disabled { opacity:.35; cursor:default }
-  .cal-day-labels { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:6px }
-  .cal-day-lbl { text-align:center; font-size:11px; font-weight:700; color:var(--text-muted) }
-  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:16px }
-  .cal-day-cell { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:13px; font-weight:600; cursor:default; color:var(--text-muted); transition:all .15s }
-  .cal-day-cell.available { background:var(--green-subtle); color:var(--green-dark); cursor:pointer; font-weight:800 }
-  .cal-day-cell.available:hover { background:var(--green); color:#fff }
-  .cal-day-cell.available.today { border:2px solid var(--green); color:var(--green-dark) }
-  .cal-day-cell.available.today:hover { color:#fff }
-  .cal-day-cell.selected { background:var(--green); color:#fff }
-
-  /* ── Time slots ── */
-  .slots-section-title { font-size:13px; font-weight:800; color:var(--text); margin-bottom:10px }
-  .slots-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px }
-  .slot-btn { padding:10px 4px; border:1.5px solid var(--border); border-radius:10px; font-size:12px; font-weight:700; background:var(--white); color:var(--text); cursor:pointer; transition:all .15s }
-  .slot-btn:hover:not(:disabled):not(.taken) { border-color:var(--green); color:var(--green) }
-  .slot-btn.selected { background:var(--green); color:#fff; border-color:var(--green) }
-  .slot-btn.taken { opacity:.35; cursor:default; text-decoration:line-through }
-  .confirm-banner { display:flex; align-items:center; gap:10px; background:var(--green-subtle); border:1.5px solid var(--green); border-radius:12px; padding:12px 16px; margin-bottom:12px }
-  .confirm-banner-text { font-size:13px; font-weight:700; color:var(--green-dark) }
-  .no-slots { font-size:13px; color:var(--text-muted); text-align:center; padding:20px 0 }
-
-  /* ── Main action button ── */
-  .main-btn { width:100%; padding:15px; background:var(--green); color:#fff; border:none; border-radius:14px; font-size:15px; font-weight:800; cursor:pointer; transition:background .15s; margin-top:8px }
-  .main-btn:hover:not(:disabled) { background:var(--green-dark) }
-  .main-btn:disabled { opacity:.4; cursor:default }
-
-  /* ── Success screen ── */
-  .success-screen { min-height:100svh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; text-align:center; background:var(--white) }
-  .success-icon  { font-size:64px; margin-bottom:16px }
-  .success-title { font-size:24px; font-weight:900; color:var(--green-dark); margin-bottom:10px }
-  .success-sub   { font-size:14px; color:var(--text-muted); margin-bottom:32px; line-height:1.7 }
-
-  /* ── Class card (yoga/belleza) ── */
-  .class-card { background:var(--white); border-radius:var(--radius-lg); border:1px solid var(--border); overflow:hidden; margin-bottom:12px }
-  .class-card-hero { height:72px; display:flex; align-items:center; justify-content:center; font-size:36px }
-  .class-hero-green  { background:linear-gradient(135deg,var(--green-dark),var(--green-light)) }
-  .class-hero-blue   { background:linear-gradient(135deg,#1a547a,#2e82b8) }
-  .class-hero-purple { background:linear-gradient(135deg,var(--purple),#9b6dd6) }
-  .class-hero-gray   { background:linear-gradient(135deg,#94a3b8,#cbd5e1) }
-  .class-card-body { padding:14px 16px }
-  .class-name { font-size:15px; font-weight:800; color:var(--text); margin-bottom:4px }
-  .class-date { font-size:12px; color:var(--text-muted); margin-bottom:10px }
-  .class-footer { display:flex; align-items:center; justify-content:space-between }
-  .places-tag { font-size:12px; font-weight:700; color:var(--text2) }
-  .places-urgent { color:#dc7a1d }
-  .full-tag { font-size:12px; font-weight:700; color:#dc2626; background:#fee2e2; padding:3px 10px; border-radius:99px }
-  .class-btn { padding:9px 18px; border:none; border-radius:10px; font-size:13px; font-weight:800; cursor:pointer; background:var(--green); color:#fff; transition:background .15s }
-  .class-btn:hover:not(:disabled) { background:var(--green-dark) }
-  .class-btn.booked { background:var(--green-subtle); color:var(--green-dark); cursor:default }
-
-  /* ── Toast ── */
-  .toast { position:fixed; bottom:calc(76px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:var(--green-dark); color:#fff; padding:12px 24px; border-radius:99px; font-size:13px; font-weight:700; z-index:200; white-space:nowrap; animation:slideUp .2s ease; box-shadow:var(--shadow-lg); max-width:380px; text-align:center }
-  .toast.error { background:#dc2626 }
-  @keyframes slideUp { from{transform:translateX(-50%) translateY(12px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
-
-  /* ── Mis Reservas ── */
-  .filter-bar { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:16px; scrollbar-width:none }
-  .filter-bar::-webkit-scrollbar { display:none }
-  .filter-btn { flex-shrink:0; padding:7px 14px; border-radius:99px; border:1.5px solid var(--border); font-size:12px; font-weight:700; cursor:pointer; background:var(--white); color:var(--text-muted); transition:all .15s }
-  .filter-btn.active { background:var(--green); border-color:var(--green); color:#fff }
-  .cita-card { background:var(--white); border-radius:var(--radius-lg); border:1px solid var(--border); padding:16px; margin-bottom:10px }
-  .cita-card.past { opacity:.7 }
-  .cita-top { display:flex; justify-content:space-between; margin-bottom:8px }
-  .cita-tipo { font-size:11px; font-weight:700; padding:2px 10px; border-radius:99px }
-  .cita-tipo.osteo   { background:var(--green-subtle); color:var(--green-dark) }
-  .cita-tipo.yoga    { background:#e8f4f8; color:#1a547a }
-  .cita-tipo.belleza { background:var(--purple-light); color:var(--purple) }
-  .cita-st { font-size:11px; font-weight:700; padding:2px 10px; border-radius:99px }
-  .cita-st.confirmed { background:var(--green-subtle); color:var(--green-dark) }
-  .cita-st.pending   { background:var(--gold-light); color:#7a5c10 }
-  .cita-st.completed { background:#f1f5f9; color:#64748b }
-  .cita-st.cancelled { background:#fee2e2; color:#dc2626 }
-  .cita-name { font-size:15px; font-weight:800; color:var(--text); margin-bottom:4px }
-  .cita-date { font-size:12px; color:var(--text-muted) }
-  .cita-pro  { font-size:12px; color:var(--text2); margin-top:3px }
-  .cita-actions { display:flex; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border) }
-  .cita-act-btn { flex:1; padding:9px; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer }
-  .cita-act-cancel { background:#fee2e2; color:#dc2626 }
-  .cita-act-cancel:hover { background:#fecaca }
-
-  /* ── Cancel modal ── */
-  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; z-index:200; padding:0 }
-  .modal-sheet { background:var(--white); border-radius:24px 24px 0 0; padding:28px 24px calc(32px + env(safe-area-inset-bottom)); width:100%; box-shadow:var(--shadow-lg) }
-  .modal-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 20px }
-  .modal-title { font-size:17px; font-weight:800; color:var(--text); margin-bottom:8px }
-  .modal-sub { font-size:13px; color:var(--text-muted); margin-bottom:20px; line-height:1.6 }
-  .modal-btn-confirm { width:100%; padding:14px; background:#dc2626; color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:800; cursor:pointer; margin-bottom:10px }
-  .modal-btn-back { width:100%; padding:14px; background:var(--bg); color:var(--text); border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer }
-
-  /* ── Perfil ── */
-  .perfil-avatar { width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg,var(--green-dark),var(--green-light)); color:#fff; font-size:24px; font-weight:900; display:flex; align-items:center; justify-content:center; margin:0 auto 12px }
-  .perfil-name   { font-size:20px; font-weight:900; color:#fff; text-align:center }
-  .perfil-phone  { font-size:14px; color:rgba(255,255,255,.7); text-align:center; margin-top:4px }
-  .perfil-item   { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--border) }
-  .perfil-item:last-child { border-bottom:none }
-  .perfil-item-label { font-size:14px; color:var(--text) }
-  .perfil-item-value { font-size:13px; color:var(--text-muted) }
-  .perfil-logout { width:100%; padding:14px; background:#fee2e2; color:#dc2626; border:none; border-radius:12px; font-size:15px; font-weight:800; cursor:pointer; margin-top:20px }
-
-  /* ── Skeleton ── */
-  .skel { background:linear-gradient(90deg,#e8f0ea 25%,#f0f5f0 50%,#e8f0ea 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; border-radius:10px }
-  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-  /* ── Empty ── */
-  .empty-state { text-align:center; padding:40px 20px; color:var(--text-muted) }
-  .empty-icon  { font-size:36px; margin-bottom:10px }
-  .empty-title { font-size:15px; font-weight:700; color:var(--text2); margin-bottom:4px }
-  .empty-sub   { font-size:13px }
-
-  /* ── Osteo service selector ── */
-  .svc-card { display:flex; align-items:center; gap:14px; padding:16px; background:var(--white); border-radius:var(--radius-lg); border:2px solid var(--border); margin-bottom:10px; cursor:pointer; transition:border-color .15s }
-  .svc-card.selected { border-color:var(--green); background:var(--green-subtle) }
-  .svc-icon2 { width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,var(--green-dark),var(--green-light)); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0 }
-  .svc-info { flex:1 }
-  .svc-name { font-size:14px; font-weight:800; color:var(--text) }
-  .svc-dur  { font-size:12px; color:var(--text-muted); margin-top:2px }
-  .svc-check { font-size:18px; color:var(--green); opacity:0; transition:opacity .15s }
-  .svc-card.selected .svc-check { opacity:1 }
-
-  /* ── Perfil edit mode ── */
-  .perfil-field { margin-bottom:12px }
-  .perfil-field label { display:block; font-size:12px; font-weight:700; color:var(--text2); margin-bottom:5px }
-  .perfil-field input { width:100%; padding:11px 14px; border:1.5px solid var(--border); border-radius:10px; font-size:14px; color:var(--text); background:var(--white); outline:none; transition:border-color .15s }
-  .perfil-field input:focus { border-color:var(--green) }
-  .perfil-save-btn { width:100%; padding:13px; background:var(--green); color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; margin-bottom:10px; transition:background .15s }
-  .perfil-save-btn:disabled { opacity:.5 }
-  .perfil-save-btn:hover:not(:disabled) { background:var(--green-dark) }
-  .perfil-edit-btn { width:100%; padding:13px; background:var(--bg); color:var(--text); border:1.5px solid var(--border); border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:16px; transition:border-color .15s }
-  .perfil-edit-btn:hover { border-color:var(--green); color:var(--green) }
-  .stat-row { display:flex; gap:12px; margin-bottom:20px }
-  .stat-box { flex:1; border-radius:12px; padding:14px 16px; text-align:center }
-  .stat-box-val { font-size:24px; font-weight:900 }
-  .stat-box-lbl { font-size:11px; font-weight:700; margin-top:2px }
-  .wapp-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--white); border-radius:var(--radius-lg); border:1px solid var(--border); margin-top:12px }
-  .wapp-label { font-size:14px; font-weight:700; color:var(--text) }
-  .wapp-sub { font-size:12px; color:var(--text-muted); margin-top:2px }
-  .toggle-track { width:44px; height:24px; border-radius:12px; border:none; cursor:pointer; position:relative; transition:background .2s; flex-shrink:0 }
-  .toggle-thumb { width:18px; height:18px; border-radius:50%; background:#fff; position:absolute; top:3px; transition:left .2s }
-`
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
@@ -571,7 +299,7 @@ function OsteopatiaPage({ onNav, onSelectPro }) {
   const [err,     setErr]     = useState('')
 
   useEffect(() => {
-    sb.from('professionals').select('id,name,specialty,bio').eq('is_active',true).order('name')
+    sb.from('professionals').select('id,name').eq('is_active',true).eq('section','osteopathy').order('name')
       .then(({ data, error }) => {
         if (error) setErr('No se pudo cargar la lista de profesionales.')
         else setProfs(data||[])
@@ -598,7 +326,7 @@ function OsteopatiaPage({ onNav, onSelectPro }) {
             <div className={`pro-avatar ${AVATAR_COLORS[idx % AVATAR_COLORS.length]}`}>{initials(pro.name)}</div>
             <div className="pro-info">
               <div className="pro-name">{pro.name}</div>
-              <div className="pro-spec">{pro.specialty || 'Osteópata'}</div>
+              <div className="pro-spec">Osteópata</div>
               <span className="pro-avail">Ver disponibilidad →</span>
             </div>
             <div className="pro-check">✓</div>
@@ -614,14 +342,9 @@ function OsteopatiaPage({ onNav, onSelectPro }) {
 }
 
 // ─── OsteopatiaCalendar ───────────────────────────────────────────────────────
-const OSTEO_SERVICES = [
-  { id:'consulta',  name:'Consulta',          duration:60, icon:'🦴', desc:'Sesión estándar · 60 min' },
-  { id:'primera',   name:'Primera consulta',  duration:90, icon:'📋', desc:'Primera visita completa · 90 min' },
-  { id:'revision',  name:'Revisión',          duration:30, icon:'🔍', desc:'Seguimiento rápido · 30 min' },
-]
-
 function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
   const today = new Date(); today.setHours(0,0,0,0)
+  const [services,   setServices]  = useState([])
   const [selService,setSelService]= useState(null)
   const [year,   setYear]   = useState(today.getFullYear())
   const [month,  setMonth]  = useState(today.getMonth())
@@ -634,6 +357,11 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
   const [confirming, setConfirming] = useState(false)
   const [confirmed,  setConfirmed]  = useState(false)
   const [err,    setErr]    = useState('')
+
+  useEffect(() => {
+    sb.from('services').select('id,name,duration_minutes').eq('is_active',true).eq('section','osteopathy').order('name')
+      .then(({ data }) => setServices(data||[]))
+  }, [])
 
   useEffect(() => {
     setDayLoad(true); setSelDate(null); setSelSlot(null); setSlots([])
@@ -685,12 +413,12 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
     setConfirming(true); setErr('')
     try {
       const startDT = new Date(`${selDate}T${selSlot}:00`)
-      const endDT   = new Date(startDT.getTime() + selService.duration * 60000)
+      const endDT   = new Date(startDT.getTime() + (selService.duration_minutes||60) * 60000)
       // Race condition check: verify slot is still free before inserting
       const { data: existing } = await sb.from('appointments')
         .select('id').eq('professional_id', pro.id)
-        .gte('start_time', startDT.toISOString())
         .lt('start_time', endDT.toISOString())
+        .gt('end_time', startDT.toISOString())
         .neq('status','cancelled')
       if (existing?.length > 0) {
         setErr('Este hueco acaba de ser ocupado. Elige otra hora.')
@@ -701,6 +429,7 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
       const { error } = await sb.from('appointments').insert({
         patient_id: patient.id,
         professional_id: pro.id,
+        service_id: selService.id,
         start_time: startDT.toISOString(),
         end_time: endDT.toISOString(),
         status: 'pending',
@@ -740,12 +469,13 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
         </header>
         <main className="green-body">
           <p className="section-label">Elige el tipo de sesión</p>
-          {OSTEO_SERVICES.map(svc => (
+          {services.length === 0 && <p className="no-recent">Cargando servicios…</p>}
+          {services.map(svc => (
             <div key={svc.id} className={`svc-card ${selService?.id===svc.id?'selected':''}`} onClick={() => setSelService(svc)}>
-              <div className="svc-icon2">{svc.icon}</div>
+              <div className="svc-icon2">🦴</div>
               <div className="svc-info">
                 <div className="svc-name">{svc.name}</div>
-                <div className="svc-dur">{svc.desc}</div>
+                <div className="svc-dur">{svc.duration_minutes} min</div>
               </div>
               <div className="svc-check">✓</div>
             </div>
@@ -768,7 +498,7 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
         <div className="green-header-inner">
           <button className="page-back" onClick={() => setSelService(null)}>‹ Tipo de consulta</button>
           <div className="page-htitle">Elige tu cita</div>
-          <div className="page-hsub">{selService.name} · {selService.duration} min · {pro.name}</div>
+          <div className="page-hsub">{selService.name} · {selService.duration_minutes} min · {pro.name}</div>
         </div>
       </header>
       <main className="green-body">
@@ -844,26 +574,20 @@ function YogaPage({ patient, onNav }) {
   const [booked,  setBooked]  = useState(new Set())
   const [toast,   setToast]   = useState(null)
   const [err,     setErr]     = useState('')
-  const slotsRef = useRef([])
-
-  useEffect(() => {
-    slotsRef.current = slots
-  }, [slots])
 
   useEffect(() => {
     const now = new Date().toISOString()
     sb.from('availability_slots')
-      .select('*,services(name),bookings(id,status)')
+      .select('*,services!inner(name,section),bookings(id,status)')
+      .eq('services.section','yoga')
       .eq('published',true).gte('start_time',now).order('start_time').limit(20)
       .then(({ data, error }) => {
         if (error) { setErr('No se pudieron cargar las clases.') }
         else {
-          const all = (data||[]).map(s => ({
+          setSlots((data||[]).map(s => ({
             ...s,
             bookings: (s.bookings||[]).filter(b => b.status !== 'cancelled')
-          }))
-          const yoga = all.filter(s => (s.services?.name||'').toLowerCase().includes('yoga'))
-          setSlots(yoga.length > 0 ? yoga : all)
+          })))
         }
         setLoading(false)
       })
@@ -1046,7 +770,7 @@ function BellezaPage({ patient, onNav }) {
     const endDT   = new Date(startDT.getTime() + dur * 60000)
     const { data: existing } = await sb.from('appointments').select('id')
       .eq('professional_id', selProf.id)
-      .gte('start_time', startDT.toISOString()).lt('start_time', endDT.toISOString())
+      .lt('start_time', endDT.toISOString()).gt('end_time', startDT.toISOString())
       .neq('status','cancelled')
     if (existing?.length > 0) {
       setErr('Este hueco acaba de ser ocupado. Elige otra hora.')
@@ -1054,6 +778,7 @@ function BellezaPage({ patient, onNav }) {
     }
     const { error } = await sb.from('appointments').insert({
       patient_id: patient.id, professional_id: selProf.id,
+      service_id: selService.id,
       start_time: startDT.toISOString(), end_time: endDT.toISOString(),
       status: 'pending', notes: selService.name,
     })
@@ -1202,6 +927,7 @@ function MisReservasPage({ patient, onNav }) {
   const [toCancel,   setToCancel]   = useState(null)
   const [cancelling, setCancelling] = useState(false)
   const [detailItem, setDetailItem] = useState(null)
+  const [toast,      setToast]      = useState(null)
 
   const FILTERS = [['all','Todas'],['upcoming','Próximas'],['past','Pasadas'],['cancelled','Canceladas']]
 
@@ -1209,12 +935,13 @@ function MisReservasPage({ patient, onNav }) {
     if (!patient?.id) return
     setLoading(true)
     const [{ data:a }, { data:b }] = await Promise.all([
-      sb.from('appointments').select('id,start_time,status,services(name),professionals(name)').eq('patient_id',patient.id).order('start_time',{ascending:false}),
-      sb.from('bookings').select('id,status,created_at,slot_id,availability_slots(start_time,services(name),professionals(name))').eq('patient_id',patient.id).order('created_at',{ascending:false}),
+      sb.from('appointments').select('id,start_time,status,services(name),professionals(name)').eq('patient_id',patient.id).order('start_time',{ascending:false}).limit(50),
+      sb.from('bookings').select('id,status,created_at,slot_id,availability_slots(start_time,services(name,section),professionals(name))').eq('patient_id',patient.id).order('created_at',{ascending:false}).limit(50),
     ])
     const ai = (a||[]).map(x => ({ id:x.id, type:'osteo', typeLabel:'Osteopatía', name:x.services?.name||'Osteopatía', pro:x.professionals?.name, date:x.start_time, status:x.status||'pending', source:'appointment' }))
     const bi = (b||[]).map(x => {
-      const n = x.availability_slots?.services?.name||''; const isY = n.toLowerCase().includes('yoga')
+      const sec = x.availability_slots?.services?.section||''; const isY = sec === 'yoga'
+      const n = x.availability_slots?.services?.name||''
       return { id:x.id, type:isY?'yoga':'belleza', typeLabel:isY?'Yoga':'Belleza', name:n||'Clase', pro:x.availability_slots?.professionals?.name, date:x.availability_slots?.start_time||x.created_at, status:x.status||'pending', source:'booking' }
     })
     setItems([...ai,...bi].sort((x,y) => new Date(y.date)-new Date(x.date)))
@@ -1226,9 +953,10 @@ function MisReservasPage({ patient, onNav }) {
   const cancel = async () => {
     if (!toCancel) return; setCancelling(true)
     const table = toCancel.source === 'appointment' ? 'appointments' : 'bookings'
-    await sb.from(table).update({ status:'cancelled', cancelled_by:'patient' }).eq('id', toCancel.id)
+    const { error } = await sb.from(table).update({ status:'cancelled', cancelled_by:'patient' }).eq('id', toCancel.id)
+    if (error) { setCancelling(false); setToast({ msg:'No se pudo cancelar. Inténtalo de nuevo.', type:'error' }); return }
     setItems(prev => prev.map(i => i.id===toCancel.id && i.source===toCancel.source ? {...i,status:'cancelled'} : i))
-    setCancelling(false); setToCancel(null)
+    setCancelling(false); setToCancel(null); setToast({ msg:'Cita cancelada', type:'ok' })
   }
 
   const now = new Date()
@@ -1244,6 +972,7 @@ function MisReservasPage({ patient, onNav }) {
 
   return (
     <div className="screen">
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       <header className="green-header">
         <div className="green-header-inner">
           <div className="page-htitle">Mis reservas</div>
@@ -1369,8 +1098,9 @@ function PerfilPage({ patient, onNav, onLogout, onPatientUpdate }) {
   }
 
   const toggleWhatsapp = async (val) => {
+    if (!patient?.id) return
     setWhatsapp(val)
-    await sb.from('patients').update({ whatsapp_notifications: val }).eq('id', patient?.id)
+    await sb.from('patients').update({ whatsapp_notifications: val }).eq('id', patient.id)
   }
 
   return (
@@ -1494,7 +1224,7 @@ export default function App() {
 
   const logout = async () => {
     await sb.auth.signOut()
-    setUser(null); setPatient(null); setPage('home')
+    setUser(null); setPatient(null); setPage('home'); setSelPro(null)
   }
 
   const updatePatient = (updated) => {
