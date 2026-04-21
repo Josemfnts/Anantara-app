@@ -715,6 +715,111 @@ function YogaPage({ patient, onNav }) {
 
 // ─── Belleza ──────────────────────────────────────────────────────────────────
 function BellezaPage({ patient, onNav }) {
+  const [services, setServices] = useState([])
+  const [myReqs,   setMyReqs]   = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [toast,    setToast]    = useState(null)
+
+  const load = useCallback(async () => {
+    const [{ data: svcs }, { data: reqs }] = await Promise.all([
+      sb.from('services').select('id,name,description,price').eq('section','beauty').eq('is_active',true).order('name'),
+      patient?.id
+        ? sb.from('beauty_requests').select('id,status,session_date,services(id,name)').eq('patient_id',patient.id).neq('status','cancelled')
+        : Promise.resolve({ data: [] }),
+    ])
+    setServices(svcs||[])
+    setMyReqs(reqs||[])
+    setLoading(false)
+  }, [patient?.id])
+  useEffect(() => { load() }, [load])
+
+  const requestService = async svc => {
+    if (!patient?.id) return
+    const { error } = await sb.from('beauty_requests').insert({ patient_id: patient.id, service_id: svc.id })
+    if (error) {
+      setToast({ msg: error.code === '23505' ? 'Ya tienes esta solicitud pendiente' : 'Error al enviar', type: 'error' })
+      return
+    }
+    setToast({ msg: 'Solicitud enviada · Te avisaremos cuando haya fecha', type: 'ok' })
+    load()
+  }
+
+  const cancelRequest = async id => {
+    await sb.from('beauty_requests').update({ status: 'cancelled' }).eq('id', id)
+    setToast({ msg: 'Solicitud cancelada', type: 'ok' })
+    load()
+  }
+
+  const fBeautyDate = d => {
+    if (!d) return 'Fecha por confirmar'
+    const dt = new Date(d + 'T12:00:00')
+    return `${dt.getDate()} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][dt.getMonth()]} ${dt.getFullYear()}`
+  }
+
+  const confirmedReqs = myReqs.filter(r => r.status === 'confirmed')
+  const waitingReqs   = myReqs.filter(r => r.status === 'waiting')
+
+  return (
+    <div className="screen">
+      <header className="green-header" style={{ background: 'linear-gradient(160deg,#7c4d8a,#b06db8)' }}>
+        <div className="green-header-inner">
+          <button className="page-back" onClick={() => onNav('home')}>‹ Inicio</button>
+          <div className="page-htitle">Belleza</div>
+          <div className="page-hsub">Servicios de estética</div>
+        </div>
+      </header>
+      <main className="green-body">
+        {loading ? null : <>
+          {confirmedReqs.length > 0 && <>
+            <p className="section-label">Citas confirmadas</p>
+            {confirmedReqs.map(r => (
+              <div key={r.id} className="class-card" style={{ marginBottom: 10 }}>
+                <div className="class-card-body">
+                  <div className="class-name">{r.services?.name}</div>
+                  <div className="class-date">📅 {fBeautyDate(r.session_date)}</div>
+                  <div style={{ marginTop: 8 }}><span className="places-tag">Confirmada ✓</span></div>
+                </div>
+              </div>
+            ))}
+          </>}
+
+          <p className="section-label">Servicios disponibles</p>
+          {services.length === 0
+            ? <div className="empty-state"><div className="empty-icon">✨</div><div className="empty-title">Próximamente</div><div className="empty-sub">Estamos preparando los servicios</div></div>
+            : services.map(svc => {
+                const req = waitingReqs.find(r => r.services?.id === svc.id)
+                return (
+                  <div key={svc.id} className="class-card" style={{ marginBottom: 10 }}>
+                    <div className="class-card-body">
+                      <div className="class-name">{svc.name}</div>
+                      {svc.description && <div className="class-date" style={{ marginTop: 4 }}>{svc.description}</div>}
+                      <div className="class-footer" style={{ marginTop: 12 }}>
+                        {svc.price != null && <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{svc.price}€</span>}
+                        {req
+                          ? <button className="class-btn booked" onClick={() => cancelRequest(req.id)}>Solicitado ✓</button>
+                          : <button className="class-btn" onClick={() => requestService(svc)}>Me interesa</button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+          }
+
+          {waitingReqs.length > 0 && (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 20px 20px', lineHeight: 1.6 }}>
+              Te avisaremos por WhatsApp cuando tengamos fecha para tus servicios solicitados.
+            </p>
+          )}
+        </>}
+      </main>
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
+      <BottomNav page="belleza" onNav={onNav} />
+    </div>
+  )
+}
+
+function _BellezaPageUnused({ patient, onNav }) {
   const today = new Date(); today.setHours(0,0,0,0)
   const [step,       setStep]       = useState('services') // services | profs | calendar | success
   const [services,   setServices]   = useState([])
