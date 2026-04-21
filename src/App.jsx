@@ -17,6 +17,7 @@ const WEEK_LONG = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
 function pad(n) { return String(n).padStart(2,'0') }
 function toK(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}` }
+function localDT(d) { return `${toK(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` }
 
 function fDT(iso) {
   if (!iso) return ''
@@ -189,7 +190,7 @@ function HomePage({ patient, onNav }) {
 
   useEffect(() => {
     if (!patient?.id) return
-    const now = new Date().toISOString()
+    const now = localDT(new Date())
 
     // Next appointment
     sb.from('appointments')
@@ -417,8 +418,8 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
       // Race condition check: verify slot is still free before inserting
       const { data: existing } = await sb.from('appointments')
         .select('id').eq('professional_id', pro.id)
-        .gte('starts_at', startDT.toISOString())
-        .lt('starts_at', endDT.toISOString())
+        .gte('starts_at', localDT(startDT))
+        .lt('starts_at', localDT(endDT))
         .neq('status','cancelled')
       if (existing?.length > 0) {
         setErr('Este hueco acaba de ser ocupado. Elige otra hora.')
@@ -430,8 +431,8 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
         patient_id: patient.id,
         professional_id: pro.id,
         service_id: selService.id,
-        starts_at: startDT.toISOString(),
-        ends_at: endDT.toISOString(),
+        starts_at: localDT(startDT),
+        ends_at: localDT(endDT),
         status: 'pending',
         notes: selService.name,
       })
@@ -576,7 +577,7 @@ function YogaPage({ patient, onNav }) {
   const [err,     setErr]     = useState('')
 
   useEffect(() => {
-    const now = new Date().toISOString()
+    const now = localDT(new Date())
     sb.from('availability_slots')
       .select('*,services!inner(name,section),bookings(id,status)')
       .eq('services.section','yoga')
@@ -770,8 +771,8 @@ function BellezaPage({ patient, onNav }) {
     const endDT   = new Date(startDT.getTime() + dur * 60000)
     const { data: existing } = await sb.from('appointments').select('id')
       .eq('professional_id', selProf.id)
-      .gte('starts_at', startDT.toISOString())
-      .lt('starts_at', endDT.toISOString())
+      .gte('starts_at', localDT(startDT))
+      .lt('starts_at', localDT(endDT))
       .neq('status','cancelled')
     if (existing?.length > 0) {
       setErr('Este hueco acaba de ser ocupado. Elige otra hora.')
@@ -780,8 +781,8 @@ function BellezaPage({ patient, onNav }) {
     const { error } = await sb.from('appointments').insert({
       patient_id: patient.id, professional_id: selProf.id,
       service_id: selService.id,
-      starts_at: startDT.toISOString(),
-      ends_at: endDT.toISOString(),
+      starts_at: localDT(startDT),
+      ends_at: localDT(endDT),
       status: 'pending', notes: selService.name,
     })
     setConfirming(false)
