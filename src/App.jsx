@@ -399,12 +399,31 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
         setSlots(data.map(s => typeof s==='string' ? {time:s,available:true} : {time:s.time||s.start_time?.slice(11,16),available:s.available!==false}))
       } else throw new Error('fallback')
     } catch {
-      // Fallback: generate from working hours
-      const { data: existing } = await sb.from('appointments').select('starts_at')
-        .eq('professional_id',pro.id).gte('starts_at',ds+'T00:00:00').lte('starts_at',ds+'T23:59:59').neq('status','cancelled')
-      const taken = new Set((existing||[]).map(a => a.starts_at.slice(11,16)))
-      const hours = [9,10,11,12,13,16,17,18]
-      setSlots(hours.map(h => ({ time:`${pad(h)}:00`, available:!taken.has(`${pad(h)}:00`) })))
+      // Fallback: usar working_hours + slot_duration reales
+      const dow = new Date(ds+'T12:00:00').getDay()
+      const [{ data: wh }, { data: profData }, { data: existing }] = await Promise.all([
+        sb.from('working_hours').select('start_time,end_time').eq('professional_id',pro.id).eq('day_of_week',dow).maybeSingle(),
+        sb.from('professionals').select('slot_duration').eq('id',pro.id).maybeSingle(),
+        sb.from('appointments').select('starts_at,ends_at').eq('professional_id',pro.id).gte('starts_at',ds+'T00:00:00').lte('starts_at',ds+'T23:59:59').neq('status','cancelled'),
+      ])
+      const slotDur = profData?.slot_duration || 60
+      const startH = parseInt((wh?.start_time||'09:00').split(':')[0])
+      const endH   = parseInt((wh?.end_time  ||'18:00').split(':')[0])
+      // Marcar como tomados todos los bloques de 15min que solapen con citas existentes
+      const takenMins = new Set()
+      for (const a of (existing||[])) {
+        const sm = parseInt(a.starts_at.slice(11,13))*60 + parseInt(a.starts_at.slice(14,16))
+        const em = a.ends_at ? parseInt(a.ends_at.slice(11,13))*60 + parseInt(a.ends_at.slice(14,16)) : sm+slotDur
+        for (let m = sm; m < em; m += 15) takenMins.add(m)
+      }
+      const slots = []
+      for (let m = startH*60; m + slotDur <= endH*60; m += slotDur) {
+        const blocked = Array.from({length: Math.ceil(slotDur/15)}, (_,i) => takenMins.has(m+i*15)).some(Boolean)
+        const hh = String(Math.floor(m/60)).padStart(2,'0')
+        const mm = String(m%60).padStart(2,'0')
+        slots.push({ time:`${hh}:${mm}`, available:!blocked })
+      }
+      setSlots(slots)
     }
     setSlLoad(false)
   }
