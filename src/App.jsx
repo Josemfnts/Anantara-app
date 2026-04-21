@@ -370,11 +370,11 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
     const end   = dateStr(year,month, new Date(year,month+1,0).getDate())
 
     Promise.all([
-      sb.from('working_hours').select('day_of_week,active').eq('professional_id',pro.id).eq('active',true),
-      sb.from('blocked_days').select('blocked_date').eq('professional_id',pro.id).gte('blocked_date',start).lte('blocked_date',end),
+      sb.from('working_hours').select('day_of_week').eq('professional_id',pro.id),
+      sb.from('blocked_days').select('date').eq('professional_id',pro.id).gte('date',start).lte('date',end),
     ]).then(([{data:wh},{data:bd}]) => {
       const workDOW = new Set((wh||[]).map(r => r.day_of_week))
-      const blocked = new Set((bd||[]).map(r => r.blocked_date))
+      const blocked = new Set((bd||[]).map(r => r.date))
       const last = new Date(year,month+1,0).getDate()
       const available = new Set()
       for (let d = 1; d <= last; d++) {
