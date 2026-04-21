@@ -724,7 +724,7 @@ function BellezaPage({ patient, onNav }) {
     const [{ data: svcs }, { data: reqs }] = await Promise.all([
       sb.from('services').select('id,name,description,price').eq('section','beauty').eq('is_active',true).order('name'),
       patient?.id
-        ? sb.from('beauty_requests').select('id,status,session_date,services(id,name)').eq('patient_id',patient.id).neq('status','cancelled')
+        ? sb.from('beauty_requests').select('id,status,session_date,session_time,services(id,name)').eq('patient_id',patient.id).neq('status','cancelled')
         : Promise.resolve({ data: [] }),
     ])
     setServices(svcs||[])
@@ -776,7 +776,7 @@ function BellezaPage({ patient, onNav }) {
               <div key={r.id} className="class-card" style={{ marginBottom: 10 }}>
                 <div className="class-card-body">
                   <div className="class-name">{r.services?.name}</div>
-                  <div className="class-date">📅 {fBeautyDate(r.session_date)}</div>
+                  <div className="class-date">📅 {fBeautyDate(r.session_date)}{r.session_time ? ` · 🕐 ${r.session_time.slice(0,5)}` : ''}</div>
                   <div style={{ marginTop: 8 }}><span className="places-tag">Confirmada ✓</span></div>
                 </div>
               </div>
