@@ -434,11 +434,11 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
     try {
       const startDT = new Date(`${selDate}T${selSlot}:00`)
       const endDT   = new Date(startDT.getTime() + (selService.duration_minutes||60) * 60000)
-      // Race condition check: verify slot is still free before inserting
+      // Race condition check: solapamiento real starts_at < endDT AND ends_at > startDT
       const { data: existing } = await sb.from('appointments')
         .select('id').eq('professional_id', pro.id)
-        .gte('starts_at', localDT(startDT))
         .lt('starts_at', localDT(endDT))
+        .gt('ends_at', localDT(startDT))
         .neq('status','cancelled')
       if (existing?.length > 0) {
         setErr('Este hueco acaba de ser ocupado. Elige otra hora.')
