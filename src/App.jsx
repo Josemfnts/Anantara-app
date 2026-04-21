@@ -737,7 +737,7 @@ function BellezaPage({ patient, onNav }) {
     if (!patient?.id) return
     const { error } = await sb.from('beauty_requests').insert({ patient_id: patient.id, service_id: svc.id })
     if (error) {
-      setToast({ msg: error.code === '23505' ? 'Ya tienes esta solicitud pendiente' : 'Error al enviar', type: 'error' })
+      setToast({ msg: error.code === '23505' ? 'Ya tienes esta solicitud pendiente' : error.message, type: 'error' })
       return
     }
     setToast({ msg: 'Solicitud enviada · Te avisaremos cuando haya fecha', type: 'ok' })
