@@ -794,7 +794,7 @@ function BellezaPage({ patient, onNav }) {
                       <div className="class-name">{svc.name}</div>
                       {svc.description && <div className="class-date" style={{ marginTop: 4 }}>{svc.description}</div>}
                       <div className="class-footer" style={{ marginTop: 12 }}>
-                        {svc.price != null && <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{svc.price}€</span>}
+                        <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{svc.price != null ? `${svc.price}€` : ''}</span>
                         {req
                           ? <button className="class-btn booked" onClick={() => cancelRequest(req.id)}>Solicitado ✓</button>
                           : <button className="class-btn" onClick={() => requestService(svc)}>Me interesa</button>
