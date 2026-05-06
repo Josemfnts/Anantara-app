@@ -401,17 +401,20 @@ function OsteopatiaCalendarPage({ pro, patient, onNav, onBack }) {
     } catch {
       // Fallback: usar working_hours + slot_duration reales
       const dow = new Date(ds+'T12:00:00').getDay()
-      const [{ data: wh }, { data: profData }, { data: existing }] = await Promise.all([
+      const [{ data: wh }, { data: profData }, { data: existing }, { data: cancelled }] = await Promise.all([
         sb.from('working_hours').select('start_time,end_time').eq('professional_id',pro.id).eq('day_of_week',dow).maybeSingle(),
         sb.from('professionals').select('slot_duration').eq('id',pro.id).maybeSingle(),
-        sb.from('appointments').select('starts_at,ends_at').eq('professional_id',pro.id).gte('starts_at',ds+'T00:00:00').lte('starts_at',ds+'T23:59:59').neq('status','cancelled'),
+        sb.from('appointments').select('starts_at,ends_at').eq('professional_id',pro.id).gte('starts_at',ds+'T00:00:00').lte('starts_at',ds+'T23:59:59').in('status',['pending','confirmed']),
+        sb.from('appointments').select('starts_at,ends_at').eq('professional_id',pro.id).gte('starts_at',ds+'T00:00:00').lte('starts_at',ds+'T23:59:59').eq('status','cancelled'),
       ])
+      // Combinar pending+confirmed (ocupados) y cancelled (reservados para WL): ninguno se ofrece como libre
+      const allTaken = [...(existing || []), ...(cancelled || [])]
       const slotDur = profData?.slot_duration || 60
       const startH = parseInt((wh?.start_time||'09:00').split(':')[0])
       const endH   = parseInt((wh?.end_time  ||'18:00').split(':')[0])
       // Marcar como tomados todos los bloques de 15min que solapen con citas existentes
       const takenMins = new Set()
-      for (const a of (existing||[])) {
+      for (const a of (allTaken||[])) {
         const sm = parseInt(a.starts_at.slice(11,13))*60 + parseInt(a.starts_at.slice(14,16))
         const em = a.ends_at ? parseInt(a.ends_at.slice(11,13))*60 + parseInt(a.ends_at.slice(14,16)) : sm+slotDur
         for (let m = sm; m < em; m += 15) takenMins.add(m)
@@ -879,9 +882,14 @@ function _BellezaPageUnused({ patient, onNav }) {
   const fetchSlots = async (day) => {
     setSlLoad(true); setSlots([]); setSelSlot(null)
     const ds = dateStr(year, month, day); setSelDate(ds)
-    const { data: existing } = await sb.from('appointments').select('starts_at')
-      .eq('professional_id', selProf.id).gte('starts_at', ds+'T00:00:00').lte('starts_at', ds+'T23:59:59').neq('status','cancelled')
-    const taken = new Set((existing||[]).map(a => a.starts_at.slice(11,16)))
+    const [{ data: existing }, { data: cancelled }] = await Promise.all([
+      sb.from('appointments').select('starts_at')
+        .eq('professional_id', selProf.id).gte('starts_at', ds+'T00:00:00').lte('starts_at', ds+'T23:59:59').in('status',['pending','confirmed']),
+      sb.from('appointments').select('starts_at')
+        .eq('professional_id', selProf.id).gte('starts_at', ds+'T00:00:00').lte('starts_at', ds+'T23:59:59').eq('status','cancelled'),
+    ])
+    const allTaken = [...(existing||[]), ...(cancelled||[])]
+    const taken = new Set(allTaken.map(a => a.starts_at.slice(11,16)))
     const hours = [9,10,11,12,13,16,17,18]
     setSlots(hours.map(h => ({ time:`${pad(h)}:00`, available: !taken.has(`${pad(h)}:00`) })))
     setSlLoad(false)
